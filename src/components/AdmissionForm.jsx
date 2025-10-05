@@ -39,14 +39,14 @@ const keyDates = [
 ];
 
 // ---------- Validation ----------
-const phoneOk = (v) => /^\+?\d[\d\s\-()]{7,}$/.test(v || "");
+const phoneOk = (v) => /^0\d{9}$/.test(v || ""); // Must start with 0 and have 10 digits
 
 function validateGuardian(g) {
   const e = {};
   if (!g.guardianName?.trim()) e.guardianName = "Please enter guardian name.";
   if (!g.guardianEmail?.trim()) e.guardianEmail = "Email is required.";
   else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(g.guardianEmail)) e.guardianEmail = "Enter a valid email.";
-  if (g.guardianPhone && !phoneOk(g.guardianPhone)) e.guardianPhone = "Enter a valid phone number.";
+  if (g.guardianPhone && !phoneOk(g.guardianPhone)) e.guardianPhone = "Enter a valid 10-digit phone number starting with 0.";
   if (!g.relationship?.trim()) e.relationship = "Relationship is required.";
   if (!g.address?.trim()) e.address = "Address is required.";
   return e;
@@ -83,15 +83,15 @@ const AdmissionForm = () => {
     guardianName: "",
     guardianEmail: "",
     guardianPhone: "",
-    relationship: "",
+    relationship: "Select relationship",
     address: "",
     // Student (expanded)
     studentName: "",
     dob: "",
-    gender: "",
+    gender: "Select Gender",
     grade: grades[1],
     studentAddress: "",
-    nationality: "",
+    nationality: "Sri Lanka",
     idType: "Birth Certificate",
     idNumber: "",
     previousSchool: "",
@@ -105,7 +105,7 @@ const AdmissionForm = () => {
     pickupLocation: "",
     emergencyName: "",
     emergencyPhone: "",
-    emergencyRelation: "",
+    emergencyRelation: "Select relationship",
   });
   const [errors, setErrors] = useState({});
 
@@ -361,21 +361,58 @@ Guardian Address: ${form.address}`
           InputProps={{ startAdornment: <InputAdornment position="start"><EmailIcon/></InputAdornment> }}
         />
       </Grid>
-      <Grid item xs={12} sm={6}>
-        <TextField
-          fullWidth label="Phone" name="guardianPhone" placeholder="+94 77 123 4567"
-          value={form.guardianPhone} onChange={(e)=>setField("guardianPhone", e.target.value)}
-          error={!!errors.guardianPhone} helperText={errors.guardianPhone || "Optional, but helps us reach you faster."}
-          InputProps={{ startAdornment: <InputAdornment position="start"><PhoneIcon/></InputAdornment> }}
-        />
-      </Grid>
-      <Grid item xs={12} sm={6}>
-        <TextField
-          fullWidth label="Relationship to Student" name="relationship" required
-          value={form.relationship} onChange={(e)=>setField("relationship", e.target.value)}
-          error={!!errors.relationship} helperText={errors.relationship}
-        />
-      </Grid>
+
+
+<Grid item xs={12} sm={6}>
+  <TextField
+    fullWidth
+    label="Phone"
+    name="guardianPhone"
+    placeholder="0XXXXXXXXX"
+    value={form.guardianPhone}
+    onChange={(e) => {
+      // allow only digits and max 10 chars
+      const val = e.target.value.replace(/\D/g, "").slice(0, 10);
+      setField("guardianPhone", val);
+    }}
+    error={!!errors.guardianPhone}
+    helperText={errors.guardianPhone || "Must be 10 digits, starting with 0."}
+    inputProps={{ maxLength: 10 }}
+    InputProps={{
+      startAdornment: (
+        <InputAdornment position="start">
+          <PhoneIcon />
+        </InputAdornment>
+      )
+    }}
+  />
+</Grid>
+
+    <Grid item xs={12} sm={6}>
+      <TextField
+        select
+        fullWidth
+        label="Relationship to Student"
+        name="relationship"
+        required
+        value={form.relationship}
+        onChange={(e) => setField("relationship", e.target.value)}
+        error={!!errors.relationship}
+        helperText={errors.relationship}
+      >
+        <MenuItem value="Select relationship" disabled>
+          Select relationship
+        </MenuItem>
+        <MenuItem value="Mother">Mother</MenuItem>
+        <MenuItem value="Father">Father</MenuItem>
+        <MenuItem value="Guardian">Guardian</MenuItem>
+        <MenuItem value="Other">Other</MenuItem>
+      </TextField>
+    </Grid>
+
+
+
+
       <Grid item xs={12}>
         <TextField
           fullWidth label="Home Address" name="address" required
@@ -412,6 +449,9 @@ Guardian Address: ${form.address}`
             value={form.gender} onChange={(e)=>setField("gender", e.target.value)}
             error={!!errors.gender} helperText={errors.gender}
           >
+            <MenuItem value="Select Gender" disabled>
+              Select Gender
+            </MenuItem>
             {["Male","Female","Prefer not to say","Other"].map((g)=>(<MenuItem key={g} value={g}>{g}</MenuItem>))}
           </TextField>
         </Grid>
@@ -437,11 +477,30 @@ Guardian Address: ${form.address}`
 
         <Grid item xs={12} md={6}>
           <TextField
-            fullWidth label="Nationality" name="nationality" required
-            value={form.nationality} onChange={(e)=>setField("nationality", e.target.value)}
-            error={!!errors.nationality} helperText={errors.nationality}
-            InputProps={{ startAdornment: <InputAdornment position="start"><PublicIcon/></InputAdornment> }}
-          />
+            select
+            fullWidth
+            label="Nationality"
+            name="nationality"
+            required
+            value={form.nationality}
+            onChange={(e) => setField("nationality", e.target.value)}
+            error={!!errors.nationality}
+            helperText={errors.nationality}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <PublicIcon />
+                </InputAdornment>
+              ),
+            }}
+          >
+            <MenuItem value="Sri Lanka">Sri Lanka</MenuItem>
+            <MenuItem value="India">India</MenuItem>
+            <MenuItem value="Bangladesh">Bangladesh</MenuItem>
+            <MenuItem value="Nepal">Nepal</MenuItem>
+            <MenuItem value="Pakistan">Pakistan</MenuItem>
+            <MenuItem value="Other">Other</MenuItem>
+          </TextField>
         </Grid>
         <Grid item xs={12} md={3}>
           <TextField
@@ -540,20 +599,57 @@ Guardian Address: ${form.address}`
             InputProps={{ startAdornment: <InputAdornment position="start"><PeopleIcon/></InputAdornment> }}
           />
         </Grid>
+
+
         <Grid item xs={12} md={4}>
           <TextField
-            fullWidth label="Relationship" name="emergencyRelation" required
-            value={form.emergencyRelation} onChange={(e)=>setField("emergencyRelation", e.target.value)}
-            error={!!errors.emergencyRelation} helperText={errors.emergencyRelation}
-          />
+            select
+            fullWidth
+            label="Relationship"
+            name="emergencyRelation"
+            required
+            value={form.emergencyRelation}
+            onChange={(e) => setField("emergencyRelation", e.target.value)}
+            error={!!errors.emergencyRelation}
+            helperText={errors.emergencyRelation}
+          >
+            <MenuItem value="Select relationship" disabled>
+               Select relationship
+            </MenuItem>
+            <MenuItem value="Mother">Mother</MenuItem>
+            <MenuItem value="Father">Father</MenuItem>
+            <MenuItem value="Guardian">Guardian</MenuItem>
+            <MenuItem value="Other">Other</MenuItem>
+          </TextField>
         </Grid>
+        
         <Grid item xs={12} md={4}>
           <TextField
-            fullWidth label="Emergency Phone" name="emergencyPhone" required
-            value={form.emergencyPhone} onChange={(e)=>setField("emergencyPhone", e.target.value)}
-            error={!!errors.emergencyPhone} helperText={errors.emergencyPhone}
+            fullWidth
+            label="Emergency Phone"
+            name="emergencyPhone"
+            placeholder="0XXXXXXXXX"
+            required
+            value={form.emergencyPhone}
+            onChange={(e) => {
+              // allow only digits and max 10 chars
+              const val = e.target.value.replace(/\D/g, "").slice(0, 10);
+              setField("emergencyPhone", val);
+            }}
+            error={!!errors.emergencyPhone}
+            helperText={errors.emergencyPhone || "Must be 10 digits, starting with 0."}
+            inputProps={{ maxLength: 10 }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <PhoneIcon />
+                </InputAdornment>
+              )
+            }}
           />
         </Grid>
+
+
       </Grid>
     </Stack>
   );
