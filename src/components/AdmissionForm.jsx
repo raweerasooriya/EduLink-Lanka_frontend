@@ -46,8 +46,9 @@ function validateGuardian(g) {
   if (!g.guardianName?.trim()) e.guardianName = "Please enter guardian name.";
   if (!g.guardianEmail?.trim()) e.guardianEmail = "Email is required.";
   else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(g.guardianEmail)) e.guardianEmail = "Enter a valid email.";
-  if (g.guardianPhone && !phoneOk(g.guardianPhone)) e.guardianPhone = "Enter a valid 10-digit phone number starting with 0.";
-  if (!g.relationship?.trim()) e.relationship = "Relationship is required.";
+  if (!g.guardianPhone?.trim()) {e.guardianPhone = "Phone number is required.";} 
+  else if (!phoneOk(g.guardianPhone)) { e.guardianPhone = "Enter a valid 10-digit phone number starting with 0.";}  
+  if (!g.relationship?.trim() || g.relationship === "Select relationship") e.relationship = "Relationship is required.";  
   if (!g.address?.trim()) e.address = "Address is required.";
   return e;
 }
@@ -57,15 +58,15 @@ function validateStudent(s) {
   if (!s.studentName?.trim()) e.studentName = "Please enter student name.";
   if (!s.dob) e.dob = "Date of birth is required.";
   if (!s.gender) e.gender = "Please select gender.";
-  if (!s.grade) e.grade = "Select a grade.";
+  if (s.gender === "Select Gender") e.gender = "Please select gender.";
 
   // New requireds for safety/contact
   if (!s.studentAddress?.trim()) e.studentAddress = "Student address is required.";
   if (!s.nationality?.trim()) e.nationality = "Nationality is required.";
-  if (s.emergencyPhone && !phoneOk(s.emergencyPhone)) e.emergencyPhone = "Enter a valid phone number.";
+  if (!s.emergencyPhone?.trim()) { e.emergencyPhone = "Emergency phone number is required.";} 
+  else if (!phoneOk(s.emergencyPhone)) { e.emergencyPhone = "Enter a valid phone number.";}  
   if (!s.emergencyName?.trim()) e.emergencyName = "Emergency contact name is required.";
-  if (!s.emergencyRelation?.trim()) e.emergencyRelation = "Emergency contact relationship is required.";
-
+  if (s.emergencyRelation === "Select relationship") e.emergencyRelation = "Emergency contact relationship is required.";
   // Optional fields (no hard validation): idType, idNumber, bloodGroup, allergies, medications,
   // specialNeeds, previousSchool, interests, languages, pickupLocation, transportNeeded
   return e;
@@ -89,7 +90,7 @@ const AdmissionForm = () => {
     studentName: "",
     dob: "",
     gender: "Select Gender",
-    grade: grades[1],
+    grade: grades[0],
     studentAddress: "",
     nationality: "Sri Lanka",
     idType: "Birth Certificate",
@@ -116,49 +117,102 @@ const AdmissionForm = () => {
   };
 
   // ---------- PDF ----------
-  const downloadPDF = () => {
-    const doc = new jsPDF();
-    let y = 20;
-    const line = (t) => { doc.text(t, 15, y); y += 7; };
+ const downloadPDF = () => {
+  const doc = new jsPDF("p", "mm", "a4");
 
-    doc.setFontSize(18);
-    line("Student Admission Application");
-    doc.setFontSize(12); y += 6;
+  // ----- Colors & Layout -----
+  const blue = "#004aad"; // EduLink Lanka theme blue
+  const gray = "#555";
+  let y = 20;
 
-    line("Guardian Information:");
-    line(`Full Name: ${form.guardianName}`);
-    line(`Email: ${form.guardianEmail}`);
-    line(`Phone: ${form.guardianPhone || "—"}`);
-    line(`Relationship: ${form.relationship}`);
-    line(`Address: ${form.address}`);
-    y += 4;
+  // ----- Header -----
+  doc.setFillColor(blue);
+  doc.rect(0, 0, 210, 25, "F");
+  doc.setFontSize(18);
+  doc.setTextColor("#fff");
+  doc.setFont("helvetica", "bold");
+  doc.text("EduLink Lanka", 15, 17);
+  doc.setFontSize(12);
+  doc.text("Student Admission Application", 150, 17, { align: "right" });
+  doc.setTextColor("#000");
+  y = 35;
 
-    line("Student Information:");
-    line(`Full Name: ${form.studentName}`);
-    line(`Date of Birth: ${form.dob}`);
-    line(`Gender: ${form.gender}`);
-    line(`Grade Applying: ${form.grade}`);
-    line(`Address: ${form.studentAddress}`);
-    line(`Nationality: ${form.nationality}`);
-    line(`ID Type/No: ${form.idType}${form.idNumber ? " — " + form.idNumber : ""}`);
-    line(`Previous School: ${form.previousSchool || "—"}`);
-    line(`Languages: ${form.languages || "—"}`);
-    line(`Interests: ${form.interests || "—"}`);
-    line(`Blood Group: ${form.bloodGroup || "—"}`);
-    line(`Allergies: ${form.allergies || "—"}`);
-    line(`Medications: ${form.medications || "—"}`);
-    line(`Special Needs: ${form.specialNeeds || "—"}`);
-    line(`Transport Needed: ${form.transportNeeded ? "Yes" : "No"}`);
-    line(`Pickup Location: ${form.pickupLocation || "—"}`);
-    y += 4;
-
-    line("Emergency Contact:");
-    line(`Name: ${form.emergencyName}`);
-    line(`Relation: ${form.emergencyRelation}`);
-    line(`Phone: ${form.emergencyPhone || "—"}`);
-
-    doc.save("AdmissionForm.pdf");
+  // Helper functions
+  const sectionTitle = (title) => {
+    doc.setDrawColor(blue);
+    doc.setLineWidth(0.5);
+    doc.line(15, y, 195, y);
+    y += 8;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.setTextColor(blue);
+    doc.text(title, 15, y);
+    doc.setTextColor("#000");
+    doc.setFont("helvetica", "normal");
+    y += 6;
   };
+
+  const line = (label, value) => {
+    doc.setFontSize(11);
+    doc.setTextColor(gray);
+    doc.text(label + ":", 20, y);
+    doc.setTextColor("#000");
+    doc.text(value || "—", 70, y);
+    y += 7;
+  };
+
+  // ----- Guardian Info -----
+  sectionTitle("Guardian Information");
+  line("Full Name", form.guardianName);
+  line("Email", form.guardianEmail);
+  line("Phone", form.guardianPhone || "—");
+  line("Relationship", form.relationship);
+  line("Address", form.address);
+
+  y += 4;
+
+  // ----- Student Info -----
+  sectionTitle("Student Information");
+  line("Full Name", form.studentName);
+  line("Date of Birth", form.dob);
+  line("Gender", form.gender);
+  line("Grade Applying", form.grade);
+  line("Address", form.studentAddress);
+  line("Nationality", form.nationality);
+  line("ID Type / No", `${form.idType}${form.idNumber ? " — " + form.idNumber : ""}`);
+  line("Previous School", form.previousSchool || "—");
+  line("Languages", form.languages || "—");
+  line("Interests", form.interests || "—");
+  line("Blood Group", form.bloodGroup || "—");
+  line("Allergies", form.allergies || "—");
+  line("Medications", form.medications || "—");
+  line("Special Needs", form.specialNeeds || "—");
+  line("Transport Needed", form.transportNeeded ? "Yes" : "No");
+  line("Pickup Location", form.pickupLocation || "—");
+
+  y += 4;
+
+  // ----- Emergency Info -----
+  sectionTitle("Emergency Contact");
+  line("Name", form.emergencyName);
+  line("Relation", form.emergencyRelation);
+  line("Phone", form.emergencyPhone || "—");
+
+  // ----- Footer -----
+  const now = new Date();
+  const formattedDate = now.toLocaleDateString();
+  const formattedTime = now.toLocaleTimeString();
+
+  doc.setDrawColor(blue);
+  doc.setLineWidth(0.3);
+  doc.line(15, 280, 195, 280);
+  doc.setFontSize(9);
+  doc.setTextColor(gray);
+  doc.text("Generated by EduLink Lanka School Management System", 15, 286);
+  doc.text(`Downloaded on: ${formattedDate} at ${formattedTime}`, 195, 286, { align: "right" });
+
+  doc.save("EduLinkLanka_AdmissionForm.pdf");
+};
 
   // ---------- Nav ----------
   const next = () => {
