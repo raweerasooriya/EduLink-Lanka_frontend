@@ -1727,6 +1727,9 @@ const ParentsSection = () => {
   );
 };
 
+
+
+
 // ---- Section: Users (create user + role) IT23168190 - R A WEERASOORIYA ------------------------------------
 
 const UsersSection = () => {
@@ -1760,7 +1763,7 @@ const UsersSection = () => {
   React.useEffect(() => {
     fetchUsers();
   }, [searchTerm]);
-
+  
   const openAdd = () => { setForm({ _id: "", name: "", username: "", email: "", role: Roles.TEACHER, phone: "", password: "" }); setOpen(true); };
   const openEdit = (row) => { 
     // Map backend role format to frontend format when opening edit dialog
@@ -1786,12 +1789,58 @@ const UsersSection = () => {
       return;
     }
     
-    // For new users, password is required
-    if (!form._id && !form.password) {
-      setSnack("Password is required for new users");
+    function validateEmail(email) {
+      // Basic email check with @ and .
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }
+
+    function validatePhone(phone) {
+      // 10 digits starting with 0
+      return /^0\d{9}$/.test(phone);
+    }
+
+    function validatePassword(password) {
+      // Must include uppercase, lowercase, and number
+      return /[A-Z]/.test(password) && /[a-z]/.test(password) && /\d/.test(password);
+    }
+
+    if (!form.name || !form.username || !form.email || !form.phone) {
+      setSnack("Name, username, email, and phone are required");
       return;
     }
-    
+
+    // Email validation
+    if (!validateEmail(form.email)) {
+      setSnack("Please enter a valid email address with @ symbol");
+      return;
+    }
+
+    // Phone validation
+    if (!validatePhone(form.phone)) {
+      setSnack("Phone number must be 10 digits and start with 0");
+      return;
+    }
+
+    // Password validation for new users
+    if (!form._id) {
+      if (!form.password) {
+        setSnack("Password is required for new users");
+        return;
+      }
+      if (!validatePassword(form.password)) {
+        setSnack("Password must include capital letter, small letter, and number");
+        return;
+      }
+    }
+
+    // Password validation for existing users if provided
+    if (form._id && form.password && form.password.trim() !== '') {
+      if (!validatePassword(form.password)) {
+        setSnack("New password must include capital letter, small letter, and number");
+        return;
+      }
+    }
+
     try {
       const token = localStorage.getItem('token');
       if (form._id) {
@@ -1932,6 +1981,9 @@ const UsersSection = () => {
   );
 };
 
+
+
+
 // ---- Section: Reports (placeholder KPIs) ------------------------------------
 
 const ReportsSection = () => {
@@ -2042,11 +2094,15 @@ const NAV_ITEMS = [
   { key: "Users", label: "Users & Roles", icon: <AdminPanelSettingsIcon /> },
   { key: "Reports", icon: <BarChartIcon /> }
 ];
+
 // ---- Section: Applications (Admissions) IT23168190 R A WEERASOORIYA ------------------------------------
 const ApplicationsSection = () => {
   const [rows, setRows] = React.useState([]);
   const [snack, setSnack] = React.useState("");
   const [loading, setLoading] = React.useState(false);
+  const [openDialog, setOpenDialog] = React.useState(false);
+  const [selectedMessage, setSelectedMessage] = React.useState('');
+
   const fetchApplications = async () => {
     setLoading(true);
     try {
@@ -2057,18 +2113,107 @@ const ApplicationsSection = () => {
     }
     setLoading(false);
   };
-  React.useEffect(() => { fetchApplications(); }, []);
+
+  React.useEffect(() => { 
+    fetchApplications(); 
+  }, []);
 
   const handleStatus = async (id, status) => {
     try {
       const token = localStorage.getItem('token');
-      await axios.patch(`http://localhost:5000/api/admissions/${id}/status`, { status, reviewedBy: "Admin" }, { headers: { 'x-auth-token': token } });
+      await axios.patch(
+        `http://localhost:5000/api/admissions/${id}/status`, 
+        { status, reviewedBy: "Admin" }, 
+        { headers: { 'x-auth-token': token } }
+      );
       fetchApplications();
       setSnack(`Application ${status}`);
     } catch (err) {
       setSnack("Error updating status");
     }
   };
+
+  const handleOpenDialog = (message) => {
+    setSelectedMessage(message);
+    setOpenDialog(true);
+  };
+
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+    setSelectedMessage('');
+  };
+
+  // Enhanced data parser for application message
+  const parseApplicationData = (message) => {
+    if (!message) return null;
+
+    const cleanMsg = message
+      .replace(/Select relationship/gi, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    // Enhanced extraction patterns
+    const extractField = (pattern) => {
+      const match = cleanMsg.match(pattern);
+      return match ? match[1].trim().replace(/,$/, '') : '—';
+    };
+
+    return {
+      student: {
+        name: extractField(/Student:([^0-9]+?)(?=DOB|\d|$)/i), // Fixed: Stop at numbers or DOB
+        dob: extractField(/DOB:([^G]+?)(?=Gender|$)/i),
+        gender: extractField(/Gender:([^G]+?)(?=Grade|$)/i),
+        grade: extractField(/Grade:([^S]+?)(?=Student|$)/i),
+      },
+      contact: {
+        address: extractField(/Address:([^N]+?)(?=Nationality|$)/i),
+        nationality: extractField(/Nationality:([^0-9]+?)(?=\d|ID|$)/i),
+        idType: extractField(/ID:([^P]+?)(?=Previous|$)/i),
+      },
+      emergency: {
+        name: extractField(/Name:([^0-9]+?)(?=\d|Relation|$)/i), // Fixed: Stop at numbers or Relation
+        relation: extractField(/Relation:([^P]+?)(?=Phone|$)/i),
+        phone: extractField(/Phone:([^G]+?)(?=Guardian|$)/i),
+      },
+      medical: {
+        allergies: extractField(/Allergies:([^M]+?)(?=Medications|$)/i),
+        medications: extractField(/Medications:([^S]+?)(?=Special|$)/i),
+        specialNeeds: extractField(/Special Needs:([^T]+?)(?=Transport|$)/i),
+      },
+      transport: {
+        needed: extractField(/Transport Needed:([^P]+?)(?=Pickup|$)/i),
+        pickupLocation: extractField(/Pickup Location:([^E]+?)(?=Emergency|$)/i),
+      }
+    };
+  };
+
+  // Reusable Info Field Component
+  const InfoField = ({ label, value, multiline = false }) => (
+    <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+      <Typography 
+        variant="subtitle2" 
+        sx={{ 
+          fontWeight: 'bold', 
+          color: 'text.secondary',
+          mb: 0.5,
+          fontSize: '0.8rem'
+        }}
+      >
+        {label}
+      </Typography>
+      <Typography 
+        variant="body2" 
+        sx={{ 
+          color: 'text.primary',
+          ...(multiline && { whiteSpace: 'pre-wrap' })
+        }}
+      >
+        {value || 'Not provided'}
+      </Typography>
+    </Box>
+  );
+
+  const applicationData = parseApplicationData(selectedMessage);
 
   return (
     <Box p={3}>
@@ -2078,11 +2223,11 @@ const ApplicationsSection = () => {
           <Table size="small" stickyHeader>
             <TableHead>
               <TableRow>
-                <TableCell>Name</TableCell>
-                <TableCell>Email</TableCell>
-                <TableCell>Phone</TableCell>
-                <TableCell>Grade</TableCell>
-                <TableCell>Message</TableCell>
+                <TableCell>Guardian Name</TableCell>
+                <TableCell>Guardian Email</TableCell>
+                <TableCell>Guardian Phone</TableCell>
+                <TableCell>Student Grade</TableCell>
+                <TableCell>More Information</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell>Actions</TableCell>
               </TableRow>
@@ -2094,21 +2239,45 @@ const ApplicationsSection = () => {
                   <TableCell>{r.email}</TableCell>
                   <TableCell>{r.phone}</TableCell>
                   <TableCell>{r.grade}</TableCell>
+
                   <TableCell>
-                    <Tooltip title={r.message || ''} placement="top" arrow>
-                      <span style={{ maxWidth: 180, display: 'inline-block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {r.message}
-                      </span>
-                    </Tooltip>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => handleOpenDialog(r.message)}
+                    >
+                      View Details
+                    </Button>
                   </TableCell>
+                  
                   <TableCell>
-                    <Chip label={r.status} color={r.status === "Accepted" ? "success" : r.status === "Rejected" ? "error" : "warning"} />
+                    <Chip 
+                      label={r.status} 
+                      color={
+                        r.status === "Accepted" ? "success" : 
+                        r.status === "Rejected" ? "error" : "warning"
+                      } 
+                    />
                   </TableCell>
                   <TableCell>
                     {r.status === "Pending" && (
                       <Stack direction="row" spacing={1}>
-                        <Button size="small" color="success" variant="contained" onClick={() => handleStatus(r._id, "Accepted")}>Accept</Button>
-                        <Button size="small" color="error" variant="contained" onClick={() => handleStatus(r._id, "Rejected")}>Reject</Button>
+                        <Button 
+                          size="small" 
+                          color="success" 
+                          variant="contained" 
+                          onClick={() => handleStatus(r._id, "Accepted")}
+                        >
+                          Accept
+                        </Button>
+                        <Button 
+                          size="small" 
+                          color="error" 
+                          variant="contained" 
+                          onClick={() => handleStatus(r._id, "Rejected")}
+                        >
+                          Reject
+                        </Button>
                       </Stack>
                     )}
                   </TableCell>
@@ -2118,7 +2287,137 @@ const ApplicationsSection = () => {
           </Table>
         </TableContainer>
       </Paper>
-      <Snackbar open={!!snack} autoHideDuration={2000} onClose={() => setSnack("")} message={snack} />
+
+      {/* Enhanced Dialog */}
+      <Dialog open={openDialog} onClose={handleCloseDialog} fullWidth maxWidth="md">
+        <DialogTitle sx={{ 
+          bgcolor: 'primary.main', 
+          color: 'white',
+          textAlign: 'center',
+          py: 2
+        }}>
+          Student Application Details
+        </DialogTitle>
+
+        <DialogContent dividers sx={{ p: 3 }}>
+          {applicationData ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              {/* Student Information */}
+              <Paper elevation={1} sx={{ p: 2.5 }}>
+                <Typography variant="h6" sx={{ mb: 2, color: 'primary.main', borderBottom: '2px solid', borderColor: 'primary.light', pb: 1 }}>
+                  Student Information
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <InfoField label="Full Name" value={applicationData.student.name} />
+                  </Grid>
+                  <Grid item xs={12} sm={3}>
+                    <InfoField label="Date of Birth" value={applicationData.student.dob} />
+                  </Grid>
+                  <Grid item xs={12} sm={3}>
+                    <InfoField label="Gender" value={applicationData.student.gender} />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <InfoField label="Grade" value={applicationData.student.grade} />
+                  </Grid>
+                </Grid>
+              </Paper>
+
+              {/* Contact Information */}
+              <Paper elevation={1} sx={{ p: 2.5 }}>
+                <Typography variant="h6" sx={{ mb: 2, color: 'primary.main', borderBottom: '2px solid', borderColor: 'primary.light', pb: 1 }}>
+                  Contact Information
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <InfoField label="Address" value={applicationData.contact.address} multiline />
+                  </Grid>
+                  <Grid item xs={12} sm={3}>
+                    <InfoField label="Nationality" value={applicationData.contact.nationality} />
+                  </Grid>
+                  <Grid item xs={12} sm={3}>
+                    <InfoField label="ID Type" value={applicationData.contact.idType} />
+                  </Grid>
+                </Grid>
+              </Paper>
+
+              {/* Emergency Contact */}
+              <Paper elevation={1} sx={{ p: 2.5 }}>
+                <Typography variant="h6" sx={{ mb: 2, color: 'primary.main', borderBottom: '2px solid', borderColor: 'primary.light', pb: 1 }}>
+                  Emergency Contact
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={4}>
+                    <InfoField label="Contact Name" value={applicationData.emergency.name} />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <InfoField label="Relationship" value={applicationData.emergency.relation} />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <InfoField label="Phone Number" value={applicationData.emergency.phone} />
+                  </Grid>
+                </Grid>
+              </Paper>
+
+              {/* Medical Information */}
+              <Paper elevation={1} sx={{ p: 2.5 }}>
+                <Typography variant="h6" sx={{ mb: 2, color: 'primary.main', borderBottom: '2px solid', borderColor: 'primary.light', pb: 1 }}>
+                  Medical Information
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={4}>
+                    <InfoField label="Allergies" value={applicationData.medical.allergies} />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <InfoField label="Medications" value={applicationData.medical.medications} />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <InfoField label="Special Needs" value={applicationData.medical.specialNeeds} />
+                  </Grid>
+                </Grid>
+              </Paper>
+
+              {/* Transport Information */}
+              <Paper elevation={1} sx={{ p: 2.5 }}>
+                <Typography variant="h6" sx={{ mb: 2, color: 'primary.main', borderBottom: '2px solid', borderColor: 'primary.light', pb: 1 }}>
+                  Transport Information
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <InfoField label="Transport Required" value={applicationData.transport.needed} />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <InfoField label="Pickup Location" value={applicationData.transport.pickupLocation} />
+                  </Grid>
+                </Grid>
+              </Paper>
+            </Box>
+          ) : (
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <Typography variant="body1" color="text.secondary">
+                No application details available.
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+
+        <DialogActions sx={{ p: 2, gap: 1 }}>
+          <Button 
+            variant="contained" 
+            onClick={handleCloseDialog}
+            sx={{ minWidth: 100 }}
+          >
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar 
+        open={!!snack} 
+        autoHideDuration={2000} 
+        onClose={() => setSnack("")} 
+        message={snack} 
+      />
     </Box>
   );
 };

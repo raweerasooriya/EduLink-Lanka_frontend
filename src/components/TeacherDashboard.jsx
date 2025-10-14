@@ -1019,11 +1019,17 @@ function NoticesSection({ teacherName }) {
   );
 }
 
-// ---------- Parents Directory (read-only) - IT23569454 - De Silva K.S.D ----------
+
+
+
+
+
+// ---------- Parents Directory (read-only) - IT23168190 - R A WEERASOORIYA ----------
 function ParentsSection() {
   const [rows, setRows] = React.useState([]);
   const [snack, setSnack] = React.useState("");
   const [searchTerm, setSearchTerm] = React.useState("");
+  const [students, setStudents] = React.useState([]); // Store all students
 
   // Helper function to format contact information
   const formatContactInfo = (parent) => {
@@ -1054,15 +1060,36 @@ function ParentsSection() {
     return 'No contact info';
   };
 
+  // Fetch all students
+  const fetchAllStudents = async () => {
+    try {
+      const res = await api.get(`/users`, { 
+        params: { role: 'Student' } 
+      });
+      return res.data || [];
+    } catch (error) {
+      console.error("Error fetching students:", error);
+      return [];
+    }
+  };
+
+  // Fetch all parents and their children
   const fetchParents = async () => {
     try {
       console.log("Fetching parents with search:", searchTerm);
-      const res = await api.get(`/users`, { 
-        params: { role: 'Parent', search: searchTerm } 
-      });
-      console.log("Parents response:", res.data);
-      const parents = (res.data || []).filter(user => user.role === 'Parent');
+      
+      // Fetch parents and students in parallel
+      const [parentsRes, studentsRes] = await Promise.all([
+        api.get(`/users`, { 
+          params: { role: 'Parent', search: searchTerm } 
+        }),
+        fetchAllStudents()
+      ]);
+
+      console.log("Parents response:", parentsRes.data);
+      const parents = (parentsRes.data || []).filter(user => user.role === 'Parent');
       setRows(parents);
+      setStudents(studentsRes);
     } catch (e) {
       console.error("Parents fetch error:", e);
       setSnack("Failed to load parents: " + (e.response?.data?.msg || e.message));
@@ -1070,6 +1097,38 @@ function ParentsSection() {
   };
 
   React.useEffect(() => { fetchParents(); }, [searchTerm]);
+
+  // Get children for a specific parent
+  const getChildrenForParent = (parentId) => {
+    return students.filter(student => student.parent === parentId || student.parent?._id === parentId);
+  };
+
+  // Format children display for a parent
+  const formatChildrenDisplay = (parentId) => {
+    const children = getChildrenForParent(parentId);
+    
+    if (children.length === 0) {
+      return (
+        <Typography variant="body2" color="text.secondary" fontStyle="italic">
+          No children assigned
+        </Typography>
+      );
+    }
+
+    return (
+      <Stack spacing={0.5}>
+        {children.map(child => (
+          <Chip 
+            key={child._id}
+            label={`${child.name} (${child.grade || 'No grade'}${child.section ? child.section : ''})`}
+            size="small"
+            variant="outlined"
+            color="primary"
+          />
+        ))}
+      </Stack>
+    );
+  };
 
   return (
     <Box>
@@ -1093,33 +1152,35 @@ function ParentsSection() {
               <TableCell sx={{ fontWeight: 600 }}>ID</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Parent Name</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Email</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Child/Student</TableCell>
+              <TableCell sx={{ fontWeight: 600 }}>Children/Students</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Contact Information</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {rows.map(r => (
-              <TableRow key={r._id || r.id} sx={{ "&:hover": { bgcolor: alpha("#1976d2", 0.02) } }}>
+            {rows.map(parent => (
+              <TableRow key={parent._id || parent.id} sx={{ "&:hover": { bgcolor: alpha("#1976d2", 0.02) } }}>
                 <TableCell>
-                  <Chip label={(r._id || r.id)?.slice(-6) || 'N/A'} size="small" />
+                  <Chip label={(parent._id || parent.id)?.slice(-6) || 'N/A'} size="small" />
                 </TableCell>
                 <TableCell>
                   <Stack direction="row" alignItems="center" spacing={2}>
-                    <Avatar sx={{ width: 32, height: 32 }}>{r.name?.charAt(0)}</Avatar>
-                    <Typography fontWeight={500}>{r.name}</Typography>
+                    <Avatar sx={{ width: 32, height: 32 }}>{parent.name?.charAt(0)}</Avatar>
+                    <Typography fontWeight={500}>{parent.name}</Typography>
                   </Stack>
                 </TableCell>
-                <TableCell>{r.email}</TableCell>
-                <TableCell>{r.parent || 'N/A'}</TableCell>
+                <TableCell>{parent.email}</TableCell>
+                <TableCell>
+                  {formatChildrenDisplay(parent._id)}
+                </TableCell>
                 <TableCell>
                   <Typography 
                     variant="body2" 
                     sx={{ 
-                      color: formatContactInfo(r) === 'No contact info' ? 'text.secondary' : 'text.primary',
-                      fontStyle: formatContactInfo(r) === 'No contact info' ? 'italic' : 'normal'
+                      color: formatContactInfo(parent) === 'No contact info' ? 'text.secondary' : 'text.primary',
+                      fontStyle: formatContactInfo(parent) === 'No contact info' ? 'italic' : 'normal'
                     }}
                   >
-                    {formatContactInfo(r)}
+                    {formatContactInfo(parent)}
                   </Typography>
                 </TableCell>
               </TableRow>
@@ -1137,7 +1198,11 @@ function ParentsSection() {
       <Snackbar open={!!snack} autoHideDuration={2500} onClose={() => setSnack("")} message={snack} />
     </Box>
   );
-}
+};
+
+
+
+
 
 // ---------- Navigation Items - IT23569454 - De Silva K.S.D ----------
 const NAV_ITEMS = [

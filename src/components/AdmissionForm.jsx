@@ -46,6 +46,7 @@ const phoneOk = (v) => /^0\d{9}$/.test(v || ""); // Must start with 0 and have 1
 function validateGuardian(g) {
   const e = {};
   if (!g.guardianName?.trim()) e.guardianName = "Please enter guardian name.";
+  else if (/[0-9]/.test(g.guardianName)) {e.guardianName = "Name should not contain numbers."; }
   if (!g.guardianEmail?.trim()) e.guardianEmail = "Email is required.";
   else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(g.guardianEmail)) e.guardianEmail = "Enter a valid email.";
   if (!g.guardianPhone?.trim()) {e.guardianPhone = "Phone number is required.";} 
@@ -58,6 +59,7 @@ function validateGuardian(g) {
 function validateStudent(s) {
   const e = {};
   if (!s.studentName?.trim()) e.studentName = "Please enter student name.";
+  else if (/[0-9]/.test(s.studentName)) {e.studentName = "Student name should not contain numbers.";}
   if (!s.dob) e.dob = "Date of birth is required.";
   if (!s.gender) e.gender = "Please select gender.";
   if (s.gender === "Select Gender") e.gender = "Please select gender.";
@@ -68,6 +70,7 @@ function validateStudent(s) {
   if (!s.emergencyPhone?.trim()) { e.emergencyPhone = "Emergency phone number is required.";} 
   else if (!phoneOk(s.emergencyPhone)) { e.emergencyPhone = "Enter a valid phone number.";}  
   if (!s.emergencyName?.trim()) e.emergencyName = "Emergency contact name is required.";
+  else if (/[0-9]/.test(s.emergencyName)) {e.emergencyName = "Emergency contact name should not contain numbers.";}
   if (s.emergencyRelation === "Select relationship") e.emergencyRelation = "Emergency contact relationship is required.";
   // Optional fields (no hard validation): idType, idNumber, bloodGroup, allergies, medications,
   // specialNeeds, previousSchool, interests, languages, pickupLocation, transportNeeded
