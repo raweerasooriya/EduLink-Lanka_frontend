@@ -1,3 +1,15 @@
+/**
+ * IT23569454 - De Silva K.S.D
+ * This component creates a dedicated "My Profile" page.
+ * It allows a logged-in user to:
+ * 1. View their current profile information (username, image).
+ * 2. Update their username and upload a new profile picture.
+ * 3. Change their password.
+ * 4. Securely delete their own account.
+ * It is a self-contained page that fetches its own data from the server.
+ */
+
+
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';

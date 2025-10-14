@@ -1,3 +1,12 @@
+/**
+ * A private route component that acts as a gatekeeper for specific pages.
+ * It checks if a user is logged in (by verifying a JWT token) and,
+ * optionally, if they have the required role to access the page.
+ * If the user is not authorized, it redirects them to the login page.
+ */
+
+
+
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';

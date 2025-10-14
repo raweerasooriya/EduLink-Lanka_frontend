@@ -98,7 +98,7 @@ const SummaryCard = ({ title, value, icon, color = "primary" }) => (
   </Card>
 );
 
-// ---------- Overview ----------
+// ---------- Overview - IT23168190 - R A WEERASOORIYA ----------
 function OverviewSection({ studentId, klass, section }) {
   const [totals, setTotals] = React.useState({ dueCount: 0, dueAmount: 0, notices: 0 });
   const [recentNotices, setRecentNotices] = React.useState([]);
@@ -299,7 +299,7 @@ function OverviewSection({ studentId, klass, section }) {
   );
 }
 
-// ---------- Calendar View for Timetable ----------
+// ---------- Calendar View for Timetable - IT23621374 - Brundhaban.J ----------
 function CalendarView({ klass, events }) {
   const [selectedDate, setSelectedDate] = React.useState(new Date());
   const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -451,7 +451,7 @@ function CalendarView({ klass, events }) {
   );
 }
 
-// ---------- My Timetable ----------
+// ---------- My Timetable - IT23621374 - Brundhaban.J----------
 function TimetableSection({ klass }) {
   const [rows, setRows] = React.useState([]);
   const [searchTerm, setSearchTerm] = React.useState("");
@@ -572,7 +572,7 @@ function TimetableSection({ klass }) {
   );
 }
 
-// ---------- My Fees with Stripe Integration ----------
+// ---------- My Fees with Stripe Integration - IT23337558 - Oshada W G D ----------
 function FeesSection({ studentId }) {
   const [rows, setRows] = React.useState([]);
   const [searchTerm, setSearchTerm] = React.useState("");
@@ -870,7 +870,7 @@ function FeesSection({ studentId }) {
   );
 }
 
-// ---------- My Results ----------
+// ---------- My Results - IT23646292 - Wathsana P S S ----------
 function ResultsSection({ studentId }) {
   const [rows, setRows] = React.useState([]);
   const [searchTerm, setSearchTerm] = React.useState("");
@@ -991,7 +991,7 @@ function ResultsSection({ studentId }) {
   );
 }
 
-// ---------- Notices ----------
+// ---------- Notices - IT23569454 - De Silva K.S.D ----------
 function NoticesSection() {
   const [rows, setRows] = React.useState([]);
   const [searchTerm, setSearchTerm] = React.useState("");
@@ -1080,7 +1080,7 @@ function NoticesSection() {
   );
 }
 
-// ---------- Drawer Navigation ----------
+// ---------- Drawer Navigation - IT23168190 - R A WEERASOORIYA ----------
 const NAV_ITEMS = [
   { key: "Overview", label: "Overview", icon: <DashboardIcon /> },
   { key: "Timetable", label: "My Timetable", icon: <CalendarMonthIcon /> },

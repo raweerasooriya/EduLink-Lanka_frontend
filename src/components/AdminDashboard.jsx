@@ -114,7 +114,7 @@ const SearchField = ({ placeholder = "Search…", onChange }) => (
   />
 );
 
-// ---- Section: Overview (analytics-lite without external libs) ---------------
+// ---- Section: Overview (analytics-lite without external libs) - IT23168190 R A WEERASOORIYA ---------------
 
 const OverviewSection = () => {
   const [totals, setTotals] = React.useState({
@@ -197,7 +197,7 @@ const OverviewSection = () => {
   );
 };
 
-// ---- Section: Student Management (proposal p.12) ----------------------------
+// ---- Section: Student Management (proposal p.12) - IT23168190 R A WEERASOORIYA ----------------------------
 
 const StudentsSection = () => {
   const [rows, setRows] = React.useState([]);
@@ -408,7 +408,7 @@ const StudentsSection = () => {
   );
 };
 
-// ---- Section: Teacher Management (proposal p.11) ----------------------------
+// ---- Section: Teacher Management (proposal p.11) - IT23168190 R A WEERASOORIYA ----------------------------
 
 const TeachersSection = () => {
   const [rows, setRows] = React.useState([]);
@@ -566,7 +566,7 @@ const TeachersSection = () => {
   );
 };
 
-// ---- Section: Classes & Timetable (proposal p.10–11) ------------------------
+// ---- Section: Classes & Timetable (proposal p.10–11) IT23621374 - Brundhaban.J ------------------------
 
 const TimetableSection = () => {
   // Dropdown data (hardcoded except teachers)
@@ -832,7 +832,7 @@ const TimetableSection = () => {
   );
 };
 
-
+// -------------- FEE SECTION IT23337558 - Oshada W G D } ------------------ 
 const FeesSection = () => {
   const [rows, setRows] = React.useState([]);
   const [students, setStudents] = React.useState([]);
@@ -1338,7 +1338,7 @@ const FeesSection = () => {
   );
 };
 
-// ---- Section: Results Management (proposal p.12–13) -------------------------
+// ---- Section: Results Management (proposal p.12–13) IT23646292 - Wathsana P S S  -------------------------
 
 const ResultsSection = () => {
   const [students, setStudents] = React.useState([]);
@@ -1538,7 +1538,7 @@ const ResultsSection = () => {
   );
 };
 
-// ---- Section: Notices & Communication (proposal p.14–15) --------------------
+// ---- Section: Notices & Communication (proposal p.14–15) IT23569454 - De Silva K.S.D --------------------
 
 const NoticesSection = () => {
   const [rows, setRows] = React.useState([]);
@@ -1678,7 +1678,7 @@ const NoticesSection = () => {
   );
 };
 
-// ---- Section: Parents (light directory) -------------------------------------
+// ---- Section: Parents (light directory) - IT23168190 - R A WEERASOORIYA -------------------------------------
 
 const ParentsSection = () => {
   const [rows, setRows] = React.useState([]);
@@ -1727,7 +1727,7 @@ const ParentsSection = () => {
   );
 };
 
-// ---- Section: Users (create user + role) ------------------------------------
+// ---- Section: Users (create user + role) IT23168190 - R A WEERASOORIYA ------------------------------------
 
 const UsersSection = () => {
   // Strong password generator
@@ -1960,6 +1960,8 @@ const ReportsSection = () => {
     <Box p={3}>
       <Typography variant="h5" mb={2}>Reports</Typography>
       <Grid container spacing={2}>
+
+        {/* STUDENT REPORT */}
         <Grid item xs={12} md={6}>
           <Card sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
             <CardHeader title="Student Reports" />
@@ -1968,6 +1970,8 @@ const ReportsSection = () => {
             </CardContent>
           </Card>
         </Grid>
+
+        {/* TEACHER REPORT */}
         <Grid item xs={12} md={6}>
           <Card sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
             <CardHeader title="Teacher Reports" />
@@ -1976,6 +1980,8 @@ const ReportsSection = () => {
             </CardContent>
           </Card>
         </Grid>
+
+        {/* FEE REPORT */}
         <Grid item xs={12} md={6}>
           <Card sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
             <CardHeader title="Fee Reports" />
@@ -1984,6 +1990,8 @@ const ReportsSection = () => {
             </CardContent>
           </Card>
         </Grid>
+
+        {/* RESULT REPORT */}
         <Grid item xs={12} md={6}>
           <Card sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
             <CardHeader title="Result Reports" />
@@ -1992,6 +2000,8 @@ const ReportsSection = () => {
             </CardContent>
           </Card>
         </Grid>
+
+        {/* NOTICE REPORT */}
         <Grid item xs={12} md={6}>
           <Card sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
             <CardHeader title="Notice Reports" />
@@ -2001,6 +2011,7 @@ const ReportsSection = () => {
           </Card>
         </Grid>
         
+        {/* TIMETABLE REPORT */}
         <Grid item xs={12} md={6}>
           <Card sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
             <CardHeader title="Timetable Reports" />
@@ -2016,7 +2027,7 @@ const ReportsSection = () => {
 };
 
 
-// ---- Root Admin Dashboard ----------------------------------------------------
+// ---- Root Admin Dashboard - IT23569454 - De Silva K.S.D----------------------------------------------------
 
 const NAV_ITEMS = [
   { key: "Overview", icon: <DashboardIcon /> },
@@ -2031,7 +2042,7 @@ const NAV_ITEMS = [
   { key: "Users", label: "Users & Roles", icon: <AdminPanelSettingsIcon /> },
   { key: "Reports", icon: <BarChartIcon /> }
 ];
-// ---- Section: Applications (Admissions) ------------------------------------
+// ---- Section: Applications (Admissions) IT23168190 R A WEERASOORIYA ------------------------------------
 const ApplicationsSection = () => {
   const [rows, setRows] = React.useState([]);
   const [snack, setSnack] = React.useState("");

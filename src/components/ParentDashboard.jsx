@@ -140,7 +140,7 @@ const ChildSelect = ({ childrenList = [], value, onChange, label = "Child" }) =>
   </FormControl>
 );
 
-// ---------- Overview ----------
+// ---------- Overview - IT23168190 - R A WEERASOORIYA ----------
 function OverviewSection({ childrenList, activeChildId }) {
   const [totals, setTotals] = React.useState({ kids: 0, dueCount: 0, dueAmount: 0, notices: 0 });
   const [recentNotices, setRecentNotices] = React.useState([]);
@@ -376,7 +376,7 @@ function OverviewSection({ childrenList, activeChildId }) {
   );
 }
 
-// ---------- Children Directory ----------
+// ---------- Children Directory - IT23168190 - R A WEERASOORIYA ----------
 function ChildrenSection({ childrenList = [], activeChildId, setActiveChildId }) {
   return (
     <Box>
@@ -423,7 +423,7 @@ function ChildrenSection({ childrenList = [], activeChildId, setActiveChildId })
   );
 }
 
-// ---------- Timetable (per selected child) ----------
+// ---------- Timetable (per selected child) - IT23621374 - Brundhaban.J ----------
 function TimetableSection({ childrenList = [], activeChildId }) {
   const child = childrenList.find(c => c.id === activeChildId);
   const [rows, setRows] = React.useState([]);
@@ -491,7 +491,7 @@ function TimetableSection({ childrenList = [], activeChildId }) {
   );
 }
 
-// ---------- Fees (per selected child, with payment) ----------
+// ---------- Fees (per selected child, with payment) - IT23337558 - Oshada W G D ----------
 function FeesSection({ childrenList = [], activeChildId }) {
   const child = childrenList.find(c => c.id === activeChildId);
   const [rows, setRows] = React.useState([]);
@@ -792,7 +792,7 @@ function FeesSection({ childrenList = [], activeChildId }) {
   );
 }
 
-// ---------- Results (per selected child) ----------
+// ---------- Results (per selected child) - IT23646292 - Wathsana P S S ----------
 function ResultsSection({ childrenList = [], activeChildId }) {
   const child = childrenList.find(c => c.id === activeChildId);
   const [rows, setRows] = React.useState([]);
@@ -904,7 +904,7 @@ function ResultsSection({ childrenList = [], activeChildId }) {
   );
 }
 
-// ---------- Notices ----------
+// ---------- Notices - IT23569454 - De Silva K.S.D ----------
 function NoticesSection() {
   const [rows, setRows] = React.useState([]);
   const [searchTerm, setSearchTerm] = React.useState("");
@@ -968,7 +968,7 @@ function NoticesSection() {
   );
 }
 
-// ---------- Navigation Items ----------
+// ---------- Navigation Items IT23168190 - R A WEERASOORIYA ----------
 const NAV_ITEMS = [
   { key: "Overview", label: "Overview", icon: <DashboardIcon /> },
   { key: "Children", label: "Children", icon: <PeopleIcon /> },
@@ -978,7 +978,7 @@ const NAV_ITEMS = [
   { key: "Notices", label: "Notices", icon: <CampaignIcon /> },
 ];
 
-// ---------- Root Parent Dashboard ----------
+// ---------- Root Parent Dashboard IT23168190 - R A WEERASOORIYA----------
 export default function ParentDashboard() {
   const navigate = useNavigate();
   const theme = useTheme();

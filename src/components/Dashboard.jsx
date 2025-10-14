@@ -643,7 +643,7 @@ const Dashboard = () => {
         </Grid>
       </Section>
 
-      {/* PROGRAMS */}
+      {/* PROGRAMS - IT23337558 - Oshada W G D  */}
       <Section id="programs" title="Programs & Curriculum" subtitle="ACADEMICS" padTop={8} padBottom={10} bgColor="grey.50">
         <Paper elevation={0} sx={{ overflow: "hidden", bgcolor: "transparent" }}>
           <Tabs
@@ -696,7 +696,7 @@ const Dashboard = () => {
         </Paper>
       </Section>
 
-      {/* ADMISSIONS
+      {/*---------------------ADMISSIONS------------------}
       <Section id="admissions" title="Admissions Process" subtitle="JOIN OUR COMMUNITY" padTop={10} padBottom={10}>
         <Grid container spacing={4}>
           <Grid item xs={12} md={7}>
@@ -817,7 +817,7 @@ const Dashboard = () => {
         </Grid>
       </Section>
  */}
-      {/* STUDENT LIFE */}
+      {/* STUDENT LIFE - IT23337558 - Oshada W G D */}
       <Section id="life" title="Life at EduLink Lanka" subtitle="BEYOND THE CLASSROOM" padTop={10} padBottom={10} bgColor="grey.50">
         <Grid container spacing={4}>
           {[
@@ -857,7 +857,7 @@ const Dashboard = () => {
         </Grid>
       </Section>
 
-      {/* FACULTY */}
+      {/* FACULTY - IT23646292 - Wathsana P S S */}
       <Section id="staff" title="Meet Our Faculty" subtitle="DEDICATED EDUCATORS" padTop={10} padBottom={10}>
         <Grid container spacing={4}>
           {[
@@ -1040,7 +1040,7 @@ const Dashboard = () => {
         </Paper>
       </Section>
 
-      {/* FOOTER */}
+      {/* FOOTER - IT23621374 - Brundhaban.J */}
       <Box id="contact" component="footer" sx={{ bgcolor: "primary.dark", color: "white", pt: 8, pb: 6 }}>
         <Container maxWidth="lg">
           <Grid container spacing={5}>

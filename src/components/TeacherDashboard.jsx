@@ -127,7 +127,7 @@ const StatsCard = ({ title, value, icon, trend, color = "primary" }) => {
 // Utility: unique list from array of objects
 const uniq = (arr) => Array.from(new Set(arr.filter(Boolean)));
 
-// ---------- Overview ----------
+// ---------- Overview - IT23168190 - R A WEERASOORIYA ----------
 function OverviewSection({ teacherName, teacherSubject }) {
   const [totals, setTotals] = React.useState({ classes: 0, students: 0, notices: 0 });
   const [nextClass, setNextClass] = React.useState(null);
@@ -285,7 +285,7 @@ function OverviewSection({ teacherName, teacherSubject }) {
   );
 }
 
-// ---------- My Timetable ----------
+// ---------- My Timetable - IT23621374 - Brundhaban.J ----------
 function TimetableSection({ teacherName }) {
   const [rows, setRows] = React.useState([]);
   const [searchTerm, setSearchTerm] = React.useState("");
@@ -357,7 +357,7 @@ function TimetableSection({ teacherName }) {
   );
 }
 
-// ---------- My Students (by class taught) ----------
+// ---------- My Students (by class taught) - IT23168190 - R A WEERASOORIYA ----------
 function StudentsSection({ teacherName }) {
   const [classes, setClasses] = React.useState([]);
   const [selectedClass, setSelectedClass] = React.useState("");
@@ -528,7 +528,7 @@ function StudentsSection({ teacherName }) {
   );
 }
 
-// ---------- Results (create/edit within classes taught) ----------
+// ---------- Results (create/edit within classes taught) - IT23646292 - Wathsana P S S ----------
 function ResultsSection({ teacherName }) {
   const [classes, setClasses] = React.useState([]);
   const [subjects, setSubjects] = React.useState([]);
@@ -843,7 +843,7 @@ function ResultsSection({ teacherName }) {
   );
 }
 
-// ---------- Notices (compose + list; teacher-scoped) ----------
+// ---------- Notices (compose + list; teacher-scoped) - IT23569454 - De Silva K.S.D ----------
 function NoticesSection({ teacherName }) {
   const [rows, setRows] = React.useState([]);
   const [snack, setSnack] = React.useState("");
@@ -1019,7 +1019,7 @@ function NoticesSection({ teacherName }) {
   );
 }
 
-// ---------- Parents Directory (read-only) ----------
+// ---------- Parents Directory (read-only) - IT23569454 - De Silva K.S.D ----------
 function ParentsSection() {
   const [rows, setRows] = React.useState([]);
   const [snack, setSnack] = React.useState("");
@@ -1139,7 +1139,7 @@ function ParentsSection() {
   );
 }
 
-// ---------- Navigation Items ----------
+// ---------- Navigation Items - IT23569454 - De Silva K.S.D ----------
 const NAV_ITEMS = [
   { key: "Overview", label: "Overview", icon: <DashboardIcon /> },
   { key: "Timetable", label: "My Timetable", icon: <CalendarMonthIcon /> },
@@ -1149,7 +1149,7 @@ const NAV_ITEMS = [
   { key: "Parents", label: "Parents", icon: <PeopleIcon /> },
 ];
 
-// ---------- Root Teacher Dashboard ----------
+// ---------- Root Teacher Dashboard - IT23569454 - De Silva K.S.D ----------
 export default function TeacherDashboard() {
   const navigate = useNavigate();
   const theme = useTheme();

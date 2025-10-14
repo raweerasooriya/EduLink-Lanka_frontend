@@ -1,3 +1,17 @@
+/**
+ * IT23569454 - De Silva K.S.D
+ * This component creates a reusable pop-up modal (a dialog box) to manage a user's profile.
+ * It's designed to be flexible and can be used anywhere in the application.
+ * For example, an admin can use it to edit a student's profile, or a user can use it to edit their own.
+ *
+ * It handles:
+ * 1. Updating profile details (name, username, mobile, image).
+ * 2. Changing a password.
+ * 3. Deleting an account.
+ *
+ * It receives the user's data from a parent component and reports back when an action is complete.
+ */
+
 import React, { useState } from 'react';
 import axios from 'axios';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Stack, Typography, Alert, Avatar, Box } from '@mui/material';
