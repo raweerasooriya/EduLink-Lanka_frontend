@@ -579,7 +579,25 @@ const TimetableSection = () => {
   const timeSlots = [
     "08:00–09:00", "09:00–10:00", "10:00–11:00", "11:00–12:00", "12:00–13:00", "13:00–14:00", "14:00–15:00"
   ];
+  
   const [teachers, setTeachers] = React.useState([]);
+  const [subjectTeachers, setSubjectTeachers] = React.useState([]);
+  const [rows, setRows] = React.useState([]);
+  const [open, setOpen] = React.useState(false);
+  const [form, setForm] = React.useState({ _id: "", day: "Mon", period: "", class: "", subject: "", teacher: "", room: "" });
+  const [snack, setSnack] = React.useState("");
+  const [warning, setWarning] = React.useState("");
+  const [searchTerm, setSearchTerm] = React.useState("");
+  
+  // NEW STATES FOR FILTERS
+  const [gradeFilter, setGradeFilter] = React.useState("");
+  const [sectionFilter, setSectionFilter] = React.useState("");
+  const [viewFilter, setViewFilter] = React.useState("week"); // "week" or "month"
+  const [roomAssignment, setRoomAssignment] = React.useState({});
+  const [showRoomChangeDialog, setShowRoomChangeDialog] = React.useState(false);
+  const [pendingRoomChange, setPendingRoomChange] = React.useState({ class: "", newRoom: "" });
+
+  // Fetch teachers and their assigned subjects
   React.useEffect(() => {
     const fetchTeachers = async () => {
       try {
@@ -587,6 +605,18 @@ const TimetableSection = () => {
         const res = await axios.get("http://localhost:5000/api/users", { headers: { 'x-auth-token': token } });
         const teacherUsers = res.data.filter(u => u.role === 'Teacher');
         setTeachers(teacherUsers);
+        
+        // Create subject-teacher mapping
+        const subjectTeacherMap = {};
+        teacherUsers.forEach(teacher => {
+          if (teacher.subject) {
+            if (!subjectTeacherMap[teacher.subject]) {
+              subjectTeacherMap[teacher.subject] = [];
+            }
+            subjectTeacherMap[teacher.subject].push(teacher);
+          }
+        });
+        setSubjectTeachers(subjectTeacherMap);
       } catch (err) {
         console.error("Error fetching teachers:", err);
       }
@@ -594,25 +624,68 @@ const TimetableSection = () => {
     fetchTeachers();
   }, []);
 
-  // Allow multiple entries for the same slot: do not filter out used teachers/rooms/classes/subjects/periods
-  const getAvailable = (field, day, period) => {
-    if (field === "teacher") return teachers;
-    if (field === "room") return rooms;
-    if (field === "class") return classes; // Now returns grade+section combinations like 1A, 2B, etc.
+  // Initialize automatic room assignment
+  React.useEffect(() => {
+    const initialRoomAssignment = {};
+    classes.forEach((cls, index) => {
+      initialRoomAssignment[cls] = rooms[index % rooms.length]; // Assign rooms cyclically
+    });
+    setRoomAssignment(initialRoomAssignment);
+  }, []);
+
+  // Get available options with validations
+  const getAvailable = (field, day, period, currentForm) => {
+    if (field === "teacher") {
+      // Filter teachers who teach the selected subject and check availability
+      const subjectTeachersList = currentForm?.subject ? (subjectTeachers[currentForm.subject] || []) : teachers;
+      
+      // Check teacher availability for the same time slot
+      const availableTeachers = subjectTeachersList.filter(teacher => {
+        const isBusy = rows.some(row => 
+          row.teacher === teacher.name && 
+          row.day === day && 
+          row.period === period &&
+          row._id !== currentForm?._id
+        );
+        return !isBusy;
+      });
+      
+      return availableTeachers;
+    }
+    
+    if (field === "room") {
+      // Auto-assign room based on class, but allow manual override
+      const autoRoom = roomAssignment[currentForm?.class] || "";
+      const allRooms = autoRoom ? [autoRoom, ...rooms.filter(r => r !== autoRoom)] : rooms;
+      return allRooms;
+    }
+    
+    if (field === "class") {
+  // Filter out classes that are already occupied at this time slot
+  const availableClasses = classes.filter(cls => {
+    const isOccupied = rows.some(row => 
+      row.class === cls && 
+      row.day === day && 
+      row.period === period &&
+      row._id !== currentForm?._id
+    );
+    return !isOccupied;
+  });
+  return availableClasses;
+}
     if (field === "subject") return subjects;
     if (field === "period") return timeSlots;
     return [];
   };
-  const [rows, setRows] = React.useState([]);
-  const [open, setOpen] = React.useState(false);
-  const [form, setForm] = React.useState({ _id: "", day: "Mon", period: "", class: "", subject: "", teacher: "", room: "" });
-  const [snack, setSnack] = React.useState("");
-  const [warning, setWarning] = React.useState("");
-  const [searchTerm, setSearchTerm] = React.useState("");
 
   const fetchTimetable = async () => {
     try {
-      const res = await axios.get(`http://localhost:5000/api/timetable?search=${searchTerm}`);
+      let params = {};
+      if (searchTerm) params.search = searchTerm;
+      if (gradeFilter) params.grade = gradeFilter;
+      if (sectionFilter) params.section = sectionFilter;
+      
+      const res = await axios.get(`http://localhost:5000/api/timetable`, { params });
       setRows(res.data);
     } catch (err) {
       console.error("Error fetching timetable:", err);
@@ -622,36 +695,134 @@ const TimetableSection = () => {
 
   React.useEffect(() => {
     fetchTimetable();
-  }, [searchTerm]);
+  }, [searchTerm, gradeFilter, sectionFilter]);
 
-  const openAdd = () => { setForm({ _id: "", day: "Mon", period: "", class: "", subject: "", teacher: "", room: "" }); setOpen(true); };
-  const openEdit = (row) => { setForm(row); setOpen(true); };
-  const save = async () => {
-    // Check for multiple entries for same date and time slot
-    if (form.date && form.period) {
-      const duplicates = rows.filter(r => r.date === form.date && r.period === form.period);
-      if (!form._id && duplicates.length > 0) {
-        setWarning(`Warning: There are already ${duplicates.length} entries for this date and time slot.`);
-      } else {
-        setWarning("");
-      }
-    } else {
-      setWarning("");
+  const openAdd = () => { 
+    setForm({ 
+      _id: "", 
+      day: "Mon", 
+      period: "", 
+      class: "", 
+      subject: "", 
+      teacher: "", 
+      room: "" 
+    }); 
+    setOpen(true); 
+  };
+
+  const openEdit = (row) => { 
+    // Auto-assign room if not set
+    const room = row.room || roomAssignment[row.class] || "";
+    setForm({ ...row, room }); 
+    setOpen(true); 
+  };
+
+  // Handle subject change - auto-populate teachers for that subject
+  const handleSubjectChange = (subject) => {
+    const teachersForSubject = subjectTeachers[subject] || [];
+    setForm({ 
+      ...form, 
+      subject, 
+      teacher: teachersForSubject.length === 1 ? teachersForSubject[0].name : "" 
+    });
+  };
+
+  // Handle class change - auto-assign room
+  const handleClassChange = (selectedClass) => {
+    const autoRoom = roomAssignment[selectedClass] || "";
+    setForm({ ...form, class: selectedClass, room: autoRoom });
+  };
+
+  // Request room change
+  const requestRoomChange = (className, newRoom) => {
+    setPendingRoomChange({ class: className, newRoom });
+    setShowRoomChangeDialog(true);
+  };
+
+  // Confirm room change
+  const confirmRoomChange = () => {
+    setRoomAssignment(prev => ({
+      ...prev,
+      [pendingRoomChange.class]: pendingRoomChange.newRoom
+    }));
+    
+    // Update form if it's for the current class being edited
+    if (form.class === pendingRoomChange.class) {
+      setForm(prev => ({ ...prev, room: pendingRoomChange.newRoom }));
     }
+    
+    setShowRoomChangeDialog(false);
+    setSnack(`Room changed to ${pendingRoomChange.newRoom} for class ${pendingRoomChange.class}`);
+  };
+
+  const save = async () => {
+    // Validation: Check if teacher is already allocated
+    if (form.teacher && form.day && form.period && form.class) {
+      const teacherConflict = rows.find(row => 
+        row.teacher === form.teacher && 
+        row.day === form.day && 
+        row.period === form.period &&
+        row._id !== form._id
+      );
+      
+      if (teacherConflict) {
+        setWarning(`Warning: Teacher ${form.teacher} is already allocated to ${teacherConflict.class} at this time!`);
+        return;
+      }
+    }
+
+    // NEW VALIDATION: Check if class+section is already allocated at same time slot
+    if (form.class && form.day && form.period) {
+      const classConflict = rows.find(row => 
+        row.class === form.class && 
+        row.day === form.day && 
+        row.period === form.period &&
+        row._id !== form._id
+      );
+      
+      if (classConflict) {
+        setWarning(`Warning: Class ${form.class} is already assigned to ${classConflict.subject} with ${classConflict.teacher} at this time slot!`);
+        return;
+      }
+    }
+
+    // NEW VALIDATION: Check if room is already occupied at same time slot
+    if (form.room && form.day && form.period) {
+      const roomConflict = rows.find(row => 
+        row.room === form.room && 
+        row.day === form.day && 
+        row.period === form.period &&
+        row._id !== form._id
+      );
+      
+      if (roomConflict) {
+        setWarning(`Warning: Room ${form.room} is already occupied by ${roomConflict.class} (${roomConflict.subject}) at this time slot!`);
+        return;
+      }
+    }
+
+    // Auto-assign room if not set
+    const finalForm = {
+      ...form,
+      room: form.room || roomAssignment[form.class] || rooms[0]
+    };
+
     try {
-      if (form._id) {
-        await axios.put(`http://localhost:5000/api/timetable/${form._id}`, form);
+      if (finalForm._id) {
+        await axios.put(`http://localhost:5000/api/timetable/${finalForm._id}`, finalForm);
       } else {
-        await axios.post("http://localhost:5000/api/timetable", form);
+        await axios.post("http://localhost:5000/api/timetable", finalForm);
       }
       fetchTimetable();
       setOpen(false);
+      setWarning("");
       setSnack("Timetable entry saved");
     } catch (err) {
       console.error("Error saving timetable entry:", err);
       setSnack("Error saving timetable entry");
     }
   };
+
   const remove = async (id) => {
     try {
       await axios.delete(`http://localhost:5000/api/timetable/${id}`);
@@ -663,10 +834,24 @@ const TimetableSection = () => {
     }
   };
 
-  // Helper: Map timetable rows to calendar events
+  // Filter events based on current filters
   const getEvents = () => {
-    // If slot has a date, use it; else use weekday mapping
-    return rows
+    let filteredRows = rows;
+
+    // Apply grade and section filters
+    if (gradeFilter || sectionFilter) {
+      filteredRows = rows.filter(row => {
+        const rowGrade = row.class?.replace(/[^0-9]/g, '');
+        const rowSection = row.class?.replace(/[0-9]/g, '');
+        
+        const gradeMatch = !gradeFilter || rowGrade === gradeFilter;
+        const sectionMatch = !sectionFilter || rowSection === sectionFilter;
+        
+        return gradeMatch && sectionMatch;
+      });
+    }
+
+    return filteredRows
       .filter(r => r.day && r.period && r.period.includes('–'))
       .map(r => {
         try {
@@ -674,7 +859,6 @@ const TimetableSection = () => {
           if (r.date) {
             eventDate = new Date(r.date);
           } else {
-            // fallback: map weekday to next occurrence
             const dayMap = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5 };
             const today = new Date();
             const currentDay = today.getDay();
@@ -682,16 +866,18 @@ const TimetableSection = () => {
             eventDate = new Date(today);
             eventDate.setDate(today.getDate() + ((targetDay + 7 - currentDay) % 7));
           }
-          // Parse period
+          
           const [start, end] = r.period.split('–');
           if (!start || !end) return null;
           const [startHour, startMin] = start.split(':');
           const [endHour, endMin] = end.split(':');
           if (!startHour || !startMin || !endHour || !endMin) return null;
+          
           const startDate = new Date(eventDate);
           startDate.setHours(Number(startHour), Number(startMin), 0, 0);
           const endDate = new Date(eventDate);
           endDate.setHours(Number(endHour), Number(endMin), 0, 0);
+          
           return {
             id: r._id,
             title: `${r.subject} (${r.class})\n${r.teacher} - ${r.room}`,
@@ -707,7 +893,6 @@ const TimetableSection = () => {
       .filter(Boolean);
   };
 
-  // Calendar event click: edit slot
   const handleEventClick = (info) => {
     const slot = info.event.extendedProps;
     setForm({
@@ -723,9 +908,7 @@ const TimetableSection = () => {
     setOpen(true);
   };
 
-  // Calendar date click: add slot for that date
   const handleDateClick = (info) => {
-    // info.dateStr is YYYY-MM-DD
     setForm({
       _id: '',
       day: '',
@@ -744,14 +927,57 @@ const TimetableSection = () => {
       <Stack direction="row" justifyContent="space-between" mb={2}>
         <Typography variant="h5">Classes & Timetable</Typography>
         <Stack direction="row" spacing={2}>
+          {/* FILTER BUTTONS */}
+          <FormControl sx={{ minWidth: 120 }} size="small">
+            <InputLabel>Grade</InputLabel>
+            <Select value={gradeFilter} onChange={(e) => setGradeFilter(e.target.value)} label="Grade">
+              <MenuItem value="">All Grades</MenuItem>
+              {grades.map(grade => <MenuItem key={grade} value={grade}>{grade}</MenuItem>)}
+            </Select>
+          </FormControl>
+          
+          <FormControl sx={{ minWidth: 120 }} size="small">
+            <InputLabel>Section</InputLabel>
+            <Select value={sectionFilter} onChange={(e) => setSectionFilter(e.target.value)} label="Section">
+              <MenuItem value="">All Sections</MenuItem>
+              {sections.map(section => <MenuItem key={section} value={section}>{section}</MenuItem>)}
+            </Select>
+          </FormControl>
+          
+          <FormControl sx={{ minWidth: 120 }} size="small">
+            <InputLabel>View</InputLabel>
+            <Select value={viewFilter} onChange={(e) => setViewFilter(e.target.value)} label="View">
+              <MenuItem value="week">Week View</MenuItem>
+              <MenuItem value="month">Month View</MenuItem>
+            </Select>
+          </FormControl>
+
           <SearchField placeholder="Search timetable..." onChange={(e) => setSearchTerm(e.target.value)} />
           <Button startIcon={<AddIcon />} variant="contained" onClick={openAdd}>Add Slot</Button>
         </Stack>
       </Stack>
+
+      {/* Room Assignment Summary */}
+      <Paper sx={{ p: 2, mb: 2, bgcolor: 'background.default' }}>
+        <Typography variant="h6" gutterBottom>Class Room Assignments</Typography>
+        <Stack direction="row" spacing={2} flexWrap="wrap">
+          {Object.entries(roomAssignment).map(([className, room]) => (
+            <Chip 
+              key={className}
+              label={`${className}: ${room}`}
+              variant="outlined"
+              onClick={() => requestRoomChange(className, room)}
+              onDelete={() => requestRoomChange(className, room)}
+              deleteIcon={<EditIcon />}
+            />
+          ))}
+        </Stack>
+      </Paper>
+
       <Paper variant="outlined" sx={{ borderRadius: 3, minHeight: 520, p: 2 }}>
         <FullCalendar
           plugins={[dayGridPlugin, timeGridPlugin]}
-          initialView="timeGridWeek"
+          initialView={viewFilter === "month" ? "dayGridMonth" : "timeGridWeek"}
           headerToolbar={{ left: 'prev,next today', center: 'title', right: 'timeGridWeek,dayGridMonth' }}
           events={getEvents()}
           height={520}
@@ -761,7 +987,8 @@ const TimetableSection = () => {
           dateClick={handleDateClick}
         />
       </Paper>
-      {/* Dialog for add/edit/delete slot */}
+
+      {/* Add/Edit Dialog */}
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
         <DialogTitle>{form._id ? "Edit" : "Add"} Timetable Slot</DialogTitle>
         <DialogContent>
@@ -786,37 +1013,67 @@ const TimetableSection = () => {
             <FormControl fullWidth>
               <InputLabel>Time Slot</InputLabel>
               <Select label="Time Slot" value={form.period} onChange={e => setForm({ ...form, period: e.target.value })}>
-                {getAvailable("period", form.day).map(ts => <MenuItem key={ts} value={ts}>{ts}</MenuItem>)}
+                {getAvailable("period", form.day, form.period, form).map(ts => <MenuItem key={ts} value={ts}>{ts}</MenuItem>)}
               </Select>
             </FormControl>
             <Stack direction="row" spacing={2}>
               <FormControl fullWidth>
                 <InputLabel>Class (Grade+Section)</InputLabel>
-                <Select label="Class (Grade+Section)" value={form.class} onChange={e => setForm({ ...form, class: e.target.value })}>
-                  {getAvailable("class", form.day, form.period).map(cls => <MenuItem key={cls} value={cls}>{cls}</MenuItem>)}
+                <Select 
+                  label="Class (Grade+Section)" 
+                  value={form.class} 
+                  onChange={e => handleClassChange(e.target.value)}
+                >
+                  {getAvailable("class", form.day, form.period, form).map(cls => (
+                    <MenuItem key={cls} value={cls}>{cls}</MenuItem>
+                  ))}
                 </Select>
               </FormControl>
               <FormControl fullWidth>
                 <InputLabel>Room</InputLabel>
-                <Select label="Room" value={form.room} onChange={e => setForm({ ...form, room: e.target.value })}>
-                  {getAvailable("room", form.day, form.period).map(rm => <MenuItem key={rm} value={rm}>{rm}</MenuItem>)}
+                <Select 
+                  label="Room" 
+                  value={form.room} 
+                  onChange={e => setForm({ ...form, room: e.target.value })}
+                >
+                  {getAvailable("room", form.day, form.period, form).map(rm => (
+                    <MenuItem key={rm} value={rm}>
+                      {rm} {rm === roomAssignment[form.class] && "(Auto-assigned)"}
+                    </MenuItem>
+                  ))}
                 </Select>
               </FormControl>
             </Stack>
             <Stack direction="row" spacing={2}>
               <FormControl fullWidth>
                 <InputLabel>Subject</InputLabel>
-                <Select label="Subject" value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })}>
-                  {getAvailable("subject", form.day, form.period).map(sub => <MenuItem key={sub} value={sub}>{sub}</MenuItem>)}
+                <Select 
+                  label="Subject" 
+                  value={form.subject} 
+                  onChange={e => handleSubjectChange(e.target.value)}
+                >
+                  {getAvailable("subject", form.day, form.period, form).map(sub => (
+                    <MenuItem key={sub} value={sub}>{sub}</MenuItem>
+                  ))}
                 </Select>
               </FormControl>
               <FormControl fullWidth>
                 <InputLabel>Teacher</InputLabel>
-                <Select label="Teacher" value={form.teacher} onChange={e => setForm({ ...form, teacher: e.target.value })}>
-                  {getAvailable("teacher", form.day, form.period).map(t => <MenuItem key={t.name} value={t.name}>{t.name}</MenuItem>)}
+                <Select 
+                  label="Teacher" 
+                  value={form.teacher} 
+                  onChange={e => setForm({ ...form, teacher: e.target.value })}
+                  error={!form.teacher && form.subject && subjectTeachers[form.subject]?.length === 0}
+                >
+                  {getAvailable("teacher", form.day, form.period, form).map(t => (
+                    <MenuItem key={t.name} value={t.name}>{t.name}</MenuItem>
+                  ))}
                 </Select>
               </FormControl>
             </Stack>
+            {form.subject && subjectTeachers[form.subject]?.length === 0 && (
+              <Alert severity="warning">No teachers assigned to {form.subject} subject</Alert>
+            )}
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -827,6 +1084,31 @@ const TimetableSection = () => {
           <Button variant="contained" onClick={save}>Save</Button>
         </DialogActions>
       </Dialog>
+
+      {/* Room Change Confirmation Dialog */}
+      <Dialog open={showRoomChangeDialog} onClose={() => setShowRoomChangeDialog(false)}>
+        <DialogTitle>Change Room Assignment</DialogTitle>
+        <DialogContent>
+          <Typography>Change room for class {pendingRoomChange.class}?</Typography>
+          <FormControl fullWidth sx={{ mt: 2 }}>
+            <InputLabel>New Room</InputLabel>
+            <Select
+              value={pendingRoomChange.newRoom}
+              onChange={(e) => setPendingRoomChange(prev => ({ ...prev, newRoom: e.target.value }))}
+              label="New Room"
+            >
+              {rooms.map(room => (
+                <MenuItem key={room} value={room}>{room}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowRoomChangeDialog(false)}>Cancel</Button>
+          <Button variant="contained" onClick={confirmRoomChange}>Confirm Change</Button>
+        </DialogActions>
+      </Dialog>
+
       <Snackbar open={!!snack} autoHideDuration={2000} onClose={() => setSnack("")} message={snack} />
     </Box>
   );
