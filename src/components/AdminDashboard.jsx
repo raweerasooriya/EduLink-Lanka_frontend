@@ -14,8 +14,9 @@ import {
   Grid, IconButton, InputLabel, List, ListItem, ListItemButton, ListItemIcon,
   ListItemText, MenuItem, Select, Snackbar, Stack, TextField, Toolbar, Tooltip,
   Typography, Paper, Table, TableHead, TableRow, TableCell, TableBody, TableContainer,
-  Card, CardContent, CardHeader, Switch, FormControlLabel
+  Card, CardContent, CardHeader, Switch, FormControlLabel, FormHelperText
 } from "@mui/material";
+
 
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import SchoolIcon from "@mui/icons-material/School";
@@ -1114,6 +1115,7 @@ const TimetableSection = () => {
   );
 };
 
+
 // -------------- FEE SECTION IT23337558 - Oshada W G D } ------------------ 
 const FeesSection = () => {
   const [rows, setRows] = React.useState([]);
@@ -1124,12 +1126,28 @@ const FeesSection = () => {
   const [verifyOpen, setVerifyOpen] = React.useState(false);
   const [verifyingFee, setVerifyingFee] = React.useState(null);
   const [verifyNotes, setVerifyNotes] = React.useState("");
-  const [form, setForm] = React.useState({ _id: "", studentId: "", student: "", subject: "", exam: "", score: "", grade: "" });
+  const [form, setForm] = React.useState({ 
+    _id: "", 
+    studentId: "", 
+    student: "", 
+    feeType: "", 
+    term: "", 
+    amount: 0, 
+    status: "DUE", 
+    date: "-",
+    assignTo: "individual", // individual, allStudents, grade, section
+    selectedGrade: "",
+    selectedSection: ""
+  });
   const [receipt, setReceipt] = React.useState(null);
   const [snack, setSnack] = React.useState("");
   const [searchTerm, setSearchTerm] = React.useState("");
+  const [formErrors, setFormErrors] = React.useState({});
 
   const terms = ["1", "2", "3"];
+  const feeTypes = ["Term Fee", "Registration Fee", "Other Fee"];
+  const grades = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
+  const sections = ["A", "B", "C", "D", "E"];
 
   const fetchFees = async () => {
     try {
@@ -1158,24 +1176,144 @@ const FeesSection = () => {
     fetchStudents();
   }, [searchTerm]);
 
-  const openAdd = () => { setForm({ _id: "", studentId: "", student: "", term: "", amount: 0, status: "DUE", date: "-" }); setOpen(true); };
-  const openEdit = (row) => { setForm(row); setOpen(true); };
-  
+  const openAdd = () => { 
+    setForm({ 
+      _id: "", 
+      studentId: "", 
+      student: "", 
+      feeType: "", 
+      term: "", 
+      amount: "", 
+      status: "DUE", 
+      date: "-",
+      assignTo: "individual",
+      selectedGrade: "",
+      selectedSection: ""
+    }); 
+    setFormErrors({});
+    setOpen(true); 
+  };
+
+  const openEdit = (row) => { 
+    setForm({
+      ...row,
+      assignTo: "individual", // Default to individual for editing
+      selectedGrade: "",
+      selectedSection: ""
+    }); 
+    setFormErrors({});
+    setOpen(true); 
+  };
+
+  const validateForm = () => {
+    console.log("✅ Validation function called");
+    const errors = {};
+
+    if (!form.amount || Number(form.amount) <= 0) {
+      errors.amount = "Amount must be greater than 0 LKR";
+    }
+
+    if (form.assignTo === "individual" && !form.studentId) {
+      errors.studentId = "Please select a student";
+    }
+
+    if (form.assignTo === "grade" && !form.selectedGrade) {
+      errors.selectedGrade = "Please select a grade";
+    }
+
+    if (!form.feeType) {
+      errors.feeType = "Please select a fee type";
+    }
+
+    if (form.feeType?.toLowerCase() === "term fee" && !form.term) {
+      errors.term = "Please select a term for term fee";
+    }
+
+    console.log("Errors before set:", errors);
+    setFormErrors(errors);
+
+    const isValid = Object.keys(errors).length === 0;
+    const firstErrorMsg = !isValid ? Object.values(errors)[0] : null; // ✅ grab first message
+
+    return { isValid, firstErrorMsg };
+  };
+
+
+
+
+  const getStudentsByCriteria = (assignTo, grade = "", section = "") => {
+    switch (assignTo) {
+      case "allStudents":
+        return students;
+      case "grade":
+        return students.filter(student => student.grade === grade);
+      case "section":
+        return students.filter(student => 
+          student.grade === grade && student.section === section
+        );
+      default:
+        return form.studentId ? [students.find(s => s._id === form.studentId)].filter(Boolean) : [];
+    }
+  };
+
   const save = async () => {
+    const { isValid, firstErrorMsg } = validateForm();
+
+    if (!isValid) {
+      setSnack(firstErrorMsg || "Please fix the validation errors");
+      return;
+    }
+
     try {
-      if (form._id) {
-        await axios.put(`http://localhost:5000/api/fees/${form._id}`, form);
-      } else {
-        await axios.post("http://localhost:5000/api/fees", form);
+      const studentsToAssign = getStudentsByCriteria(
+        form.assignTo,
+        form.selectedGrade,
+        form.selectedSection
+      );
+
+      if (studentsToAssign.length === 0) {
+        setSnack("No students found for the selected criteria");
+        return;
       }
+
+      if (form.assignTo !== "individual" && studentsToAssign.length > 1) {
+        const feePromises = studentsToAssign.map(student => {
+          const feeData = {
+            studentId: student._id,
+            student: student.name,
+            feeType: form.feeType,
+            term: form.term,
+            amount: form.amount,
+            status: form.status,
+            date: form.date,
+            grade: student.grade,
+            section: student.section
+          };
+
+          return form._id
+            ? axios.put(`http://localhost:5000/api/fees/${form._id}`, feeData)
+            : axios.post("http://localhost:5000/api/fees", feeData);
+        });
+
+        await Promise.all(feePromises);
+        setSnack(`Fee assigned to ${studentsToAssign.length} students successfully`);
+      } else {
+        if (form._id) {
+          await axios.put(`http://localhost:5000/api/fees/${form._id}`, form);
+        } else {
+          await axios.post("http://localhost:5000/api/fees", form);
+        }
+        setSnack("Fee saved successfully");
+      }
+
       fetchFees();
       setOpen(false);
-      setSnack("Fee saved");
     } catch (err) {
       console.error("Error saving fee:", err);
       setSnack("Error saving fee");
     }
   };
+
 
   const viewPaymentSlip = (row) => {
     setSelectedSlip(row);
@@ -1194,7 +1332,7 @@ const FeesSection = () => {
       const endpoint = approve ? 'verify' : 'reject';
       
       await axios.post(`http://localhost:5000/api/fees/${verifyingFee._id}/${endpoint}`, {
-        verifiedBy: 'Admin', // You can get this from current user context
+        verifiedBy: 'Admin',
         notes: verifyNotes
       }, {
         headers: { 'x-auth-token': token }
@@ -1220,6 +1358,7 @@ const FeesSection = () => {
         student: paid.student,
         amount: paid.amount,
         term: paid.term,
+        feeType: paid.feeType,
         date: paid.date,
       });
       setSnack("Fee marked as paid");
@@ -1276,6 +1415,7 @@ const FeesSection = () => {
             <TableRow>
               <TableCell>Invoice</TableCell>
               <TableCell>Student</TableCell>
+              <TableCell>Fee Type</TableCell>
               <TableCell>Term</TableCell>
               <TableCell>Amount (LKR)</TableCell>
               <TableCell>Status</TableCell>
@@ -1290,7 +1430,8 @@ const FeesSection = () => {
               <TableRow key={r._id}>
                 <TableCell>{r._id?.substring(0, 8)}...</TableCell>
                 <TableCell>{r.student}</TableCell>
-                <TableCell>{r.term}</TableCell>
+                <TableCell>{r.feeType}</TableCell>
+                <TableCell>{r.term || '-'}</TableCell>
                 <TableCell>{r.amount?.toLocaleString()}</TableCell>
                 <TableCell>
                   <Chip 
@@ -1373,54 +1514,158 @@ const FeesSection = () => {
         <DialogTitle>{form._id ? "Edit" : "Add"} Invoice</DialogTitle>
         <DialogContent>
           <Stack spacing={2} mt={1}>
+            {/* Assignment Type */}
             <FormControl fullWidth>
-              <InputLabel>Select Student</InputLabel>
+              <InputLabel>Assign To</InputLabel>
               <Select 
-                label="Select Student" 
-                value={form.studentId} 
-                onChange={e => {
-                  const selectedStudent = students.find(s => s._id === e.target.value);
-                  setForm({ 
-                    ...form, 
-                    studentId: e.target.value, 
-                    student: selectedStudent ? selectedStudent.name : "" 
-                  });
-                }}
+                label="Assign To"
+                value={form.assignTo}
+                onChange={e => setForm({ ...form, assignTo: e.target.value })}
               >
-                <MenuItem value="">Select a student</MenuItem>
-                {students.map(student => (
-                  <MenuItem key={student._id} value={student._id}>
-                    {student.name} ({student.username}) - Grade {student.grade || 'N/A'}
-                  </MenuItem>
-                ))}
+                <MenuItem value="individual">Individual Student</MenuItem>
+                <MenuItem value="allStudents">All Students</MenuItem>
+                <MenuItem value="grade">By Grade</MenuItem>
+                <MenuItem value="section">By Grade & Section</MenuItem>
               </Select>
             </FormControl>
-            <TextField 
-              label="Student Name" 
-              value={form.student} 
-              disabled
-              helperText="Auto-filled when student is selected"
-            />
-            <FormControl fullWidth>
-              <InputLabel>Term</InputLabel>
+
+            {/* Individual Student Selection */}
+            {form.assignTo === "individual" && (
+              <>
+                <FormControl fullWidth error={!!formErrors.studentId}>
+                  <InputLabel>Select Student</InputLabel>
+                  <Select 
+                    label="Select Student" 
+                    value={form.studentId} 
+                    onChange={e => {
+                      const selectedStudent = students.find(s => s._id === e.target.value);
+                      setForm({ 
+                        ...form, 
+                        studentId: e.target.value, 
+                        student: selectedStudent ? selectedStudent.name : "" 
+                      });
+                    }}
+                  >
+                    <MenuItem value="">Select a student</MenuItem>
+                    {students.map(student => (
+                      <MenuItem key={student._id} value={student._id}>
+                        {student.name} ({student.username}) - Grade {student.grade || 'N/A'} {student.section || ''}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  {formErrors.studentId && (
+                    <FormHelperText>{formErrors.studentId}</FormHelperText>
+                  )}
+                </FormControl>
+                <TextField 
+                  label="Student Name" 
+                  value={form.student} 
+                  disabled
+                  helperText="Auto-filled when student is selected"
+                />
+              </>
+            )}
+
+            {/* Grade Selection */}
+            {(form.assignTo === "grade" || form.assignTo === "section") && (
+              <FormControl fullWidth error={!!formErrors.selectedGrade}>
+                <InputLabel>Select Grade</InputLabel>
+                <Select 
+                  label="Select Grade"
+                  value={form.selectedGrade}
+                  onChange={e => setForm({ ...form, selectedGrade: e.target.value })}
+                >
+                  <MenuItem value="">Select Grade</MenuItem>
+                  {grades.map(grade => (
+                    <MenuItem key={grade} value={grade}>Grade {grade}</MenuItem>
+                  ))}
+                </Select>
+                {formErrors.selectedGrade && (
+                  <FormHelperText>{formErrors.selectedGrade}</FormHelperText>
+                )}
+              </FormControl>
+            )}
+
+            {/* Section Selection */}
+            {form.assignTo === "section" && (
+              <FormControl fullWidth>
+                <InputLabel>Select Section</InputLabel>
+                <Select 
+                  label="Select Section"
+                  value={form.selectedSection}
+                  onChange={e => setForm({ ...form, selectedSection: e.target.value })}
+                >
+                  <MenuItem value="">Select Section</MenuItem>
+                  {sections.map(section => (
+                    <MenuItem key={section} value={section}>Section {section}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
+
+            {/* Student Count Preview */}
+            {(form.assignTo !== "individual") && (
+              <Paper variant="outlined" sx={{ p: 2, bgcolor: 'grey.50' }}>
+                <Typography variant="body2" color="text.secondary">
+                  This will assign fees to: <strong>
+                    {getStudentsByCriteria(form.assignTo, form.selectedGrade, form.selectedSection).length}
+                  </strong> students
+                </Typography>
+              </Paper>
+            )}
+
+            {/* Fee Type */}
+            <FormControl fullWidth error={!!formErrors.feeType}>
+              <InputLabel>Fee Type</InputLabel>
               <Select 
-                label="Term" 
-                value={form.term} 
-                onChange={e => setForm({ ...form, term: e.target.value })}
+                label="Fee Type"
+                value={form.feeType}
+                onChange={e => setForm({ ...form, feeType: e.target.value })}
               >
-                <MenuItem value="">Select Term</MenuItem>
-                {terms.map(term => (
-                  <MenuItem key={term} value={term}>Term {term}</MenuItem>
+                <MenuItem value="">Select Fee Type</MenuItem>
+                {feeTypes.map(type => (
+                  <MenuItem key={type} value={type}>{type}</MenuItem>
                 ))}
               </Select>
+              {formErrors.feeType && (
+                <FormHelperText>{formErrors.feeType}</FormHelperText>
+              )}
             </FormControl>
-            <TextField 
-              label="Amount (LKR)" 
-              type="number" 
-              value={form.amount} 
-              onChange={e => setForm({ ...form, amount: Number(e.target.value) })} 
+
+            {/* Term Selection (only for Term Fee) */}
+            {form.feeType === "Term Fee" && (
+              <FormControl fullWidth error={!!formErrors.term}>
+                <InputLabel>Term</InputLabel>
+                <Select 
+                  label="Term" 
+                  value={form.term} 
+                  onChange={e => setForm({ ...form, term: e.target.value })}
+                >
+                  <MenuItem value="">Select Term</MenuItem>
+                  {terms.map(term => (
+                    <MenuItem key={term} value={term}>Term {term}</MenuItem>
+                  ))}
+                </Select>
+                {formErrors.term && (
+                  <FormHelperText>{formErrors.term}</FormHelperText>
+                )}
+              </FormControl>
+            )}
+
+            {/* Amount */}
+            <TextField
+              label="Amount (LKR)"
+              type="number"
+              value={form.amount}
+              onChange={e => setForm({ ...form, amount: e.target.value ? Number(e.target.value) : "" })}
               fullWidth
+              error={!!formErrors.amount}
+              helperText={formErrors.amount ? formErrors.amount : ""}
+              InputProps={{ inputProps: { min: 1 } }}
             />
+
+            
+
             <FormControl fullWidth>
               <InputLabel>Status</InputLabel>
               <Select label="Status" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
@@ -1464,8 +1709,12 @@ const FeesSection = () => {
                   <Typography variant="body1">{selectedSlip.student}</Typography>
                 </Grid>
                 <Grid item xs={6}>
+                  <Typography variant="subtitle2" color="text.secondary">Fee Type</Typography>
+                  <Typography variant="body1">{selectedSlip.feeType}</Typography>
+                </Grid>
+                <Grid item xs={6}>
                   <Typography variant="subtitle2" color="text.secondary">Term</Typography>
-                  <Typography variant="body1">Term {selectedSlip.term}</Typography>
+                  <Typography variant="body1">{selectedSlip.term ? `Term ${selectedSlip.term}` : '-'}</Typography>
                 </Grid>
                 <Grid item xs={6}>
                   <Typography variant="subtitle2" color="text.secondary">Amount</Typography>
@@ -1568,7 +1817,8 @@ const FeesSection = () => {
           <Stack spacing={2} mt={1}>
             <Typography variant="body2" color="text.secondary">
               Student: <strong>{verifyingFee?.student}</strong><br/>
-              Term: <strong>Term {verifyingFee?.term}</strong><br/>
+              Fee Type: <strong>{verifyingFee?.feeType}</strong><br/>
+              Term: <strong>{verifyingFee?.term ? `Term ${verifyingFee.term}` : 'N/A'}</strong><br/>
               Amount: <strong>LKR {verifyingFee?.amount?.toLocaleString()}</strong>
             </Typography>
             
@@ -1604,6 +1854,7 @@ const FeesSection = () => {
           <Stack spacing={1} mt={1}>
             <Typography>Invoice: <b>{receipt?.number}</b></Typography>
             <Typography>Student: <b>{receipt?.student}</b></Typography>
+            <Typography>Fee Type: <b>{receipt?.feeType}</b></Typography>
             <Typography>Term: <b>{receipt?.term}</b></Typography>
             <Typography>Amount: <b>LKR {receipt?.amount?.toLocaleString()}</b></Typography>
             <Typography>Date: <b>{receipt?.date}</b></Typography>
@@ -1619,6 +1870,9 @@ const FeesSection = () => {
     </Box>
   );
 };
+
+
+
 
 // ---- Section: Results Management (proposal p.12–13) IT23646292 - Wathsana P S S  -------------------------
 
