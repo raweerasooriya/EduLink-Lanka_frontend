@@ -2677,7 +2677,7 @@ const ReportsSection = () => {
 };
 
 
-// ---- Root Admin Dashboard - IT23569454 - De Silva K.S.D----------------------------------------------------
+// ---- Root Admin Dashboard ----------------------------------------------------
 
 const NAV_ITEMS = [
   { key: "Overview", icon: <DashboardIcon /> },
