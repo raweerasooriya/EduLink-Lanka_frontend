@@ -534,11 +534,34 @@ function ResultsSection({ teacherName }) {
   const [subjects, setSubjects] = React.useState([]);
   const [selectedClass, setSelectedClass] = React.useState("");
   const [rows, setRows] = React.useState([]);
+  const [gradeFilter, setGradeFilter] = React.useState("");
   const [students, setStudents] = React.useState([]);
   const [searchTerm, setSearchTerm] = React.useState("");
   const [snack, setSnack] = React.useState("");
   const [open, setOpen] = React.useState(false);
   const [form, setForm] = React.useState({ _id: "", studentId: "", student: "", subject: "", exam: "", score: 0, grade: "" });
+
+  // Calculate grade based on score
+  const calculateGrade = (score) => {
+    let grade = "";
+    if (score >= 90) grade = "A+";
+    else if (score >= 75) grade = "A";
+    else if (score >= 65) grade = "B";
+    else if (score >= 50) grade = "C";
+    else if (score >= 35) grade = "S";
+    else if (score >= 0) grade = "W";
+    return grade;
+  };
+
+  // Check if result already exists for same student, subject, and exam
+  const isDuplicateResult = (studentId, subject, exam, currentId = "") => {
+    return rows.some(row => 
+      row.studentId === studentId && 
+      row.subject === subject && 
+      row.exam === exam && 
+      (row._id || row.id) !== currentId
+    );
+  };
 
   const loadMeta = async () => {
     try {
@@ -580,7 +603,7 @@ function ResultsSection({ teacherName }) {
 
   const fetchRows = async () => {
     try {
-      console.log("Fetching results for class:", selectedClass, "search:", searchTerm);
+      console.log("Fetching results for class:", selectedClass, "search:", searchTerm, "gradeFilter:", gradeFilter);
       
       let params = {};
       if (searchTerm) params.search = searchTerm;
@@ -595,7 +618,12 @@ function ResultsSection({ teacherName }) {
       
       let data = res.data || [];
       
-      console.log("Results data with class info:", data);
+      // CLIENT-SIDE GRADE FILTERING
+      if (gradeFilter) {
+        data = data.filter(row => row.grade === gradeFilter);
+      }
+      
+      console.log("Final filtered results:", data);
       setRows(data);
     } catch (e) {
       console.error("Results fetch error:", e);
@@ -657,25 +685,75 @@ function ResultsSection({ teacherName }) {
       fetchStudents();
     }
   }, [teacherName]);
-  React.useEffect(() => { fetchRows(); fetchStudents(); }, [selectedClass, searchTerm]);
+  React.useEffect(() => { fetchRows(); fetchStudents(); }, [selectedClass, searchTerm, gradeFilter]);
 
-  const openAdd = () => { setForm({ _id: "", studentId: "", student: "", subject: subjects[0] || "", exam: "", score: 0, grade: "" }); setOpen(true); };
-  const openEdit = (row) => { setForm({ ...row, studentId: row.studentId, student: row.student, subject: row.subject }); setOpen(true); };
+
+  const openAdd = () => { 
+    setForm({ 
+      _id: "", 
+      studentId: "", 
+      student: "", 
+      subject: subjects[0] || "", 
+      exam: "", 
+      score: 0, 
+      grade: "" 
+    }); 
+    setOpen(true); 
+  };
+
+  const openEdit = (row) => { 
+    setForm({ 
+      ...row, 
+      studentId: row.studentId, 
+      student: row.student, 
+      subject: row.subject 
+    }); 
+    setOpen(true); 
+  };
+
+  const handleScoreChange = (score) => {
+    // Prevent negative values
+    const validScore = Math.max(0, score);
+    const grade = calculateGrade(validScore);
+    setForm({ ...form, score: validScore, grade });
+  };
 
   const save = async () => {
     try {
-      const payload = { ...form, class: selectedClass };
+      // Validation: Check for duplicate result
+      if (isDuplicateResult(form.studentId, form.subject, form.exam, form._id)) {
+        setSnack("Error: This student already has a result for the same subject and term test!");
+        return;
+      }
+
+      // Validation: Check if score is valid
+      if (form.score < 0) {
+        setSnack("Error: Score cannot be negative!");
+        return;
+      }
+
+      if (form.score > 100) {
+        setSnack("Error: Score cannot be greater than 100!");
+        return;
+      }
+
+      const payload = { 
+        ...form, 
+        class: selectedClass,
+        grade: calculateGrade(form.score) // Ensure grade is calculated before saving
+      };
+      
       if (form._id) {
         await api.put(`/results/${form._id}`, payload);
       } else {
         await api.post(`/results`, payload);
       }
       setOpen(false);
-      setSnack("Result saved");
+      setSnack("Result saved successfully");
       fetchRows();
     } catch (e) {
       console.error(e);
-      setSnack("Error saving result");
+      setSnack("Error saving result: " + (e.response?.data?.msg || e.message));
     }
   };
 
@@ -692,30 +770,49 @@ function ResultsSection({ teacherName }) {
 
   return (
     <Box>
-      <Stack direction="row" justifyContent="space-between" mb={3}>
-        <Typography variant="h5" fontWeight={700}>Results</Typography>
-        <Stack direction="row" spacing={2} alignItems="center">
-          <FormControl sx={{ minWidth: 160 }}>
-            <InputLabel>Class</InputLabel>
-            <Select label="Class" value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)}>
-              <MenuItem value="">All Classes</MenuItem>
-              {classes.map(c => <MenuItem key={c} value={c}>{c}</MenuItem>)}
-            </Select>
-          </FormControl>
-          <TextField
-            size="small"
-            placeholder="Search subject/student…"
-            onChange={(e) => setSearchTerm(e.target.value)}
-            sx={{ minWidth: 250 }}
-            InputProps={{
-              startAdornment: <SearchIcon sx={{ mr: 1, color: "text.secondary" }} />,
-            }}
-          />
-          <Button startIcon={<AddIcon />} variant="contained" onClick={openAdd} sx={{ borderRadius: 2 }}>
-            Add Result
-          </Button>
-        </Stack>
-      </Stack>
+ <Stack direction="row" justifyContent="space-between" mb={3}>
+  <Typography variant="h5" fontWeight={700}>Results</Typography>
+  <Stack direction="row" spacing={2} alignItems="center">
+    <FormControl sx={{ minWidth: 160 }}>
+      <InputLabel>Class</InputLabel>
+      <Select label="Class" value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)}>
+        <MenuItem value="">All Classes</MenuItem>
+        {classes.map(c => <MenuItem key={c} value={c}>{c}</MenuItem>)}
+      </Select>
+    </FormControl>
+
+    {/* ADD THIS GRADE FILTER */}
+    <FormControl sx={{ minWidth: 140 }}>
+      <InputLabel>Grade Filter</InputLabel>
+      <Select 
+        label="Grade Filter" 
+        value={gradeFilter} 
+        onChange={(e) => setGradeFilter(e.target.value)}
+      >
+        <MenuItem value="">All Grades</MenuItem>
+        <MenuItem value="A+">A+</MenuItem>
+        <MenuItem value="A">A</MenuItem>
+        <MenuItem value="B">B</MenuItem>
+        <MenuItem value="C">C</MenuItem>
+        <MenuItem value="S">S</MenuItem>
+        <MenuItem value="W">W</MenuItem>
+      </Select>
+    </FormControl>
+
+    <TextField
+      size="small"
+      placeholder="Search subject/student…"
+      onChange={(e) => setSearchTerm(e.target.value)}
+      sx={{ minWidth: 250 }}
+      InputProps={{
+        startAdornment: <SearchIcon sx={{ mr: 1, color: "text.secondary" }} />,
+      }}
+    />
+    <Button startIcon={<AddIcon />} variant="contained" onClick={openAdd} sx={{ borderRadius: 2 }}>
+      Add Result
+    </Button>
+  </Stack>
+</Stack>
 
       <ModernCard>
         <Table>
@@ -723,7 +820,7 @@ function ResultsSection({ teacherName }) {
             <TableRow>
               <TableCell sx={{ fontWeight: 600 }}>Student</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Subject</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Exam</TableCell>
+              <TableCell sx={{ fontWeight: 600 }}>Term Test</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Score</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Grade</TableCell>
               <TableCell align="right" sx={{ fontWeight: 600 }}>Actions</TableCell>
@@ -750,7 +847,19 @@ function ResultsSection({ teacherName }) {
                   />
                 </TableCell>
                 <TableCell>
-                  <Chip label={r.grade} size="small" variant="outlined" />
+                  <Chip 
+                    label={r.grade} 
+                    size="small" 
+                    variant="outlined" 
+                    color={
+                      r.grade === "A+" ? "success" : 
+                      r.grade === "A" ? "success" : 
+                      r.grade === "B" ? "warning" : 
+                      r.grade === "C" ? "warning" : 
+                      r.grade === "S" ? "error" : 
+                      "error"
+                    }
+                  />
                 </TableCell>
                 <TableCell align="right">
                   <IconButton onClick={() => openEdit(r)} color="primary" size="small">
@@ -776,9 +885,9 @@ function ResultsSection({ teacherName }) {
         <DialogContent>
           <Stack spacing={3} mt={2}>
             <FormControl fullWidth>
-              <InputLabel>Student</InputLabel>
+              <InputLabel>Student *</InputLabel>
               <Select
-                label="Student"
+                label="Student *"
                 value={form.studentId}
                 onChange={(e) => {
                   const s = students.find(x => (x._id || x.id) === e.target.value);
@@ -792,9 +901,9 @@ function ResultsSection({ teacherName }) {
             </FormControl>
 
             <FormControl fullWidth>
-              <InputLabel>Subject</InputLabel>
+              <InputLabel>Subject *</InputLabel>
               <Select
-                label="Subject"
+                label="Subject *"
                 value={form.subject}
                 onChange={(e) => setForm({ ...form, subject: e.target.value })}
               >
@@ -802,27 +911,65 @@ function ResultsSection({ teacherName }) {
               </Select>
             </FormControl>
 
-            <Stack direction="row" spacing={2}>
-              <TextField 
-                label="Exam (e.g., Mid/Final)" 
-                value={form.exam} 
-                onChange={e => setForm({ ...form, exam: e.target.value })} 
-                fullWidth 
-              />
-              <TextField 
-                label="Score" 
+            <FormControl fullWidth>
+              <InputLabel>Term Test *</InputLabel>
+              <Select
+                label="Term Test *"
+                value={form.exam}
+                onChange={(e) => setForm({ ...form, exam: e.target.value })}
+              >
+                <MenuItem value="Term Test 1">Term Test 1</MenuItem>
+                <MenuItem value="Term Test 2">Term Test 2</MenuItem>
+                <MenuItem value="Term Test 3">Term Test 3</MenuItem>
+              </Select>
+            </FormControl>
+
+            <Stack direction="row" spacing={2} alignItems="center">
+            <TextField 
+                label="Score *" 
                 type="number" 
-                value={form.score} 
-                onChange={e => setForm({ ...form, score: Number(e.target.value) })} 
-                sx={{ width: 100 }}
+                value={form.score === 0 ? '' : form.score} 
+                onChange={e => {
+                  const value = e.target.value === '' ? 0 : Number(e.target.value);
+                  handleScoreChange(value);
+                }}
+                onFocus={(e) => {
+                  if (form.score === 0) {
+                    setForm({ ...form, score: '', grade: '' });
+                  }
+                }}
+                onBlur={e => {
+                  const value = e.target.value === '' ? 0 : Number(e.target.value);
+                  handleScoreChange(value);
+                }}
+                inputProps={{ 
+                  min: 0,
+                  max: 100,
+                  step: 0.1
+                }}
+                sx={{ width: 120 }}
+                error={form.score < 0 || form.score > 100}
+                helperText={
+                  form.score < 0 ? "Score cannot be negative" : 
+                  form.score > 100 ? "Score cannot exceed 100" : 
+                  ""
+                }
               />
               <TextField 
                 label="Grade" 
                 value={form.grade} 
-                onChange={e => setForm({ ...form, grade: e.target.value })} 
+                InputProps={{
+                  readOnly: true,
+                }}
                 sx={{ width: 100 }}
               />
             </Stack>
+
+            {form.studentId && form.subject && form.exam && isDuplicateResult(form.studentId, form.subject, form.exam, form._id) && (
+              <Typography color="error" variant="body2">
+                ⚠️ This student already has a result for {form.subject} - {form.exam}
+              </Typography>
+            )}
           </Stack>
         </DialogContent>
         <DialogActions sx={{ p: 3 }}>
@@ -830,8 +977,7 @@ function ResultsSection({ teacherName }) {
           <Button 
             variant="contained" 
             onClick={save} 
-            disabled={!form.studentId || !form.subject || !form.exam}
-            sx={{ borderRadius: 2 }}
+              disabled={!form.studentId || !form.subject || !form.exam || form.score < 0 || form.score > 100 || isDuplicateResult(form.studentId, form.subject, form.exam, form._id)}            sx={{ borderRadius: 2 }}
           >
             Save
           </Button>
@@ -841,7 +987,10 @@ function ResultsSection({ teacherName }) {
       <Snackbar open={!!snack} autoHideDuration={2500} onClose={() => setSnack("")} message={snack} />
     </Box>
   );
-}
+};
+
+
+
 
 // ---------- Notices (compose + list; teacher-scoped) - IT23569454 - De Silva K.S.D ----------
 function NoticesSection({ teacherName }) {

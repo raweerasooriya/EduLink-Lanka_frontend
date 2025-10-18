@@ -1,5 +1,4 @@
 /**
- * IT23168190 - R A WEERASOORIYA
  * A private route component that acts as a gatekeeper for specific pages.
  * It checks if a user is logged in (by verifying a JWT token) and,
  * optionally, if they have the required role to access the page.

@@ -842,7 +842,7 @@ const FeesSection = () => {
   const [verifyOpen, setVerifyOpen] = React.useState(false);
   const [verifyingFee, setVerifyingFee] = React.useState(null);
   const [verifyNotes, setVerifyNotes] = React.useState("");
-  const [form, setForm] = React.useState({ _id: "", studentId: "", student: "", term: "", amount: 0, status: "DUE", date: "-" });
+  const [form, setForm] = React.useState({ _id: "", studentId: "", student: "", subject: "", exam: "", score: "", grade: "" });
   const [receipt, setReceipt] = React.useState(null);
   const [snack, setSnack] = React.useState("");
   const [searchTerm, setSearchTerm] = React.useState("");
@@ -1390,6 +1390,23 @@ const ResultsSection = () => {
     fetchResults();
   }, [searchTerm]);
 
+  // Automatically calculate grade based on score
+  React.useEffect(() => {
+    const s = form.score;
+    let grade = "";
+
+    if (s === "" || s === null || s === undefined) grade = "";
+    else if (s >= 90) grade = "A+";
+    else if (s >= 75) grade = "A";
+    else if (s >= 65) grade = "B";
+    else if (s >= 50) grade = "C";
+    else if (s >= 35) grade = "S";
+    else if (s >= 0) grade = "W";
+    else grade = "";
+
+    setForm(prev => ({ ...prev, grade }));
+  }, [form.score]);
+
   const openAdd = () => { setForm({ _id: "", studentId: "", student: "", subject: "", exam: "", score: 0, grade: "" }); setOpen(true); };
   const openEdit = (row) => { setForm(row); setOpen(true); };
   const save = async () => {
@@ -1397,6 +1414,20 @@ const ResultsSection = () => {
       // Validate required fields
       if (!form.studentId || !form.student || !form.subject || !form.exam || !form.grade || form.score === undefined) {
         setSnack("Please fill in all required fields");
+        return;
+      }
+
+      // ✅ Prevent duplicate marks for same student + subject + exam
+      const duplicate = rows.some(
+        r =>
+          r.studentId === form.studentId &&
+          r.subject === form.subject &&
+          r.exam === form.exam &&
+          r._id !== form._id // allow updating the same record
+      );
+
+      if (duplicate) {
+        setSnack(`Marks for ${form.subject} - ${form.exam} already exist for this student.`);
         return;
       }
 
@@ -1507,24 +1538,55 @@ const ResultsSection = () => {
             <FormControl component="fieldset">
               <Stack direction="row" spacing={2} alignItems="center">
                 <Typography>Exam Type:</Typography>
-                <Button variant={form.exam === "Mid" ? "contained" : "outlined"} onClick={() => setForm({ ...form, exam: "Mid" })}>Mid</Button>
-                <Button variant={form.exam === "Final" ? "contained" : "outlined"} onClick={() => setForm({ ...form, exam: "Final" })}>Final</Button>
+                <Button
+                  variant={form.exam === "Term Test 1" ? "contained" : "outlined"}
+                  onClick={() => setForm({ ...form, exam: "Term Test 1" })}
+                >
+                  Term Test 1
+                </Button>
+                <Button
+                  variant={form.exam === "Term Test 2" ? "contained" : "outlined"}
+                  onClick={() => setForm({ ...form, exam: "Term Test 2" })}
+                >
+                  Term Test 2
+                </Button>
+                <Button
+                  variant={form.exam === "Term Test 3" ? "contained" : "outlined"}
+                  onClick={() => setForm({ ...form, exam: "Term Test 3" })}
+                >
+                  Term Test 3
+                </Button>
               </Stack>
             </FormControl>
-            <FormControl fullWidth>
+            <TextField
+              label="Score (%)"
+              type="text"
+              value={form.score}
+              onChange={e => {
+                const value = e.target.value;
+                // Allow only numbers and optional decimal
+                if (/^\d*\.?\d*$/.test(value)) {
+                  // Prevent leading zeros unless the number is 0.something
+                  const cleanValue = value.replace(/^0+(?=\d)/, "");
+                  setForm({ ...form, score: cleanValue === "" ? "" : Number(cleanValue) });
+                }
+              }}
+              inputProps={{ inputMode: "decimal", pattern: "[0-9]*", maxLength: 5 }}
+              helperText="Enter score as percentage (0–100)"
+            />
+
+            <FormControl fullWidth disabled>
               <InputLabel>Result Grade</InputLabel>
-              <Select label="Result Grade" value={form.grade} onChange={e => setForm({ ...form, grade: e.target.value })}>
-                {letterGrades.map(g => <MenuItem key={g} value={g}>{g}</MenuItem>)}
+              <Select label="Result Grade" value={form.grade}>
+                <MenuItem value=""><em>None</em></MenuItem>
+                <MenuItem value="A+">A+</MenuItem>
+                <MenuItem value="A">A</MenuItem>
+                <MenuItem value="B">B</MenuItem>
+                <MenuItem value="C">C</MenuItem>
+                <MenuItem value="S">S</MenuItem>
+                <MenuItem value="W">W</MenuItem>
               </Select>
             </FormControl>
-            <TextField 
-              label="Score (%)" 
-              type="number" 
-              value={form.score} 
-              onChange={e => setForm({ ...form, score: Number(e.target.value) })} 
-              inputProps={{ min: 0, max: 100, step: 0.1 }}
-              helperText="Enter score as percentage (0-100)"
-            />
           </Stack>
         </DialogContent>
         <DialogActions>
