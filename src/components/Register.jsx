@@ -140,13 +140,48 @@ const Register = () => {
 
   const validateStep1 = () => {
     const errs = [];
+
     if (!name.trim()) errs.push("Full name is required");
     if (!username.trim()) errs.push("Username is required");
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errs.push("Valid email is required");
-    if (password !== confirmPassword) errs.push("Passwords do not match");
-    if (passwordScore(password) < 3) errs.push("Password is too weak");
+
+    // Email validation
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) 
+      errs.push("Valid email is required");
+
+    // Password confirmation
+    if (password !== confirmPassword) 
+      errs.push("Passwords do not match");
+
+    // Password strength: at least one uppercase, one lowercase, one number, min 8 chars
+    if (password.length < 8) 
+      errs.push("Password must be at least 8 characters long");
+
+    if (!/[A-Z]/.test(password)) 
+      errs.push("Password must contain at least one uppercase letter");
+
+    if (!/[a-z]/.test(password)) 
+      errs.push("Password must contain at least one lowercase letter");
+
+    if (!/[0-9]/.test(password)) 
+      errs.push("Password must contain at least one number");
+
+    // Optional: keep your strength meter check if you have passwordScore()
+    if (typeof passwordScore === "function" && passwordScore(password) < 3) 
+      errs.push("Password is too weak");
+
+    // Username validation
+    if (username.length < 3) 
+      errs.push("Username must be at least 3 characters long");
+
+    if (username.includes(" ")) 
+      errs.push("Username cannot contain spaces");
+
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) 
+      errs.push("Username can only contain letters, numbers, and underscores");
+
     return errs;
   };
+
 
   const handleNext = async () => {
     setError("");
@@ -156,7 +191,19 @@ const Register = () => {
       setError(errs[0]);
       return;
     }
-    await sendOtp();
+    
+    // Check if username already exists before sending OTP
+    try {
+      const response = await axios.get(`http://localhost:5000/api/users/check-username/${username}`);
+      if (response.data.exists) {
+        setError("Username is already taken");
+        return;
+      }
+      await sendOtp();
+    } catch (error) {
+      console.error("Error checking username:", error);
+      setError("Error checking username availability");
+    }
   };
 
   const handleBack = () => {

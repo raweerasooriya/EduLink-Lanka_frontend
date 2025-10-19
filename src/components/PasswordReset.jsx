@@ -68,6 +68,38 @@ function passwordScore(pw = '') {
   return score; // 0..5
 }
 
+const validatePassword = (newPassword, confirmPassword) => {
+  const errs = [];
+  
+  // Check minimum length first
+  if (newPassword.length < 8) {
+    errs.push("Password must be at least 8 characters long");
+  }
+  
+  // Check for uppercase
+  if (!/[A-Z]/.test(newPassword)) {
+    errs.push("Include at least one uppercase letter (A-Z)");
+  }
+  
+  // Check for lowercase
+  if (!/[a-z]/.test(newPassword)) {
+    errs.push("Include at least one lowercase letter (a-z)");
+  }
+  
+  // Check for numbers
+  if (!/[0-9]/.test(newPassword)) {
+    errs.push("Include at least one number (0-9)");
+  }
+  
+  // Check if passwords match
+  if (newPassword !== confirmPassword) {
+    errs.push("Passwords do not match");
+  }
+  
+  return errs;
+};
+
+
 const PasswordReset = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1); // 1: ask email, 2: OTP, 3: new password
@@ -155,9 +187,17 @@ const PasswordReset = () => {
 
   const handleResetPassword = async (e) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
-    if (!isPasswordMatch) return setError('Passwords do not match');
+    setError("");
+    setSuccess("");
+    
+    // Validate password
+    const passwordErrors = validatePassword(newPassword, confirmPassword);
+    if (passwordErrors.length > 0) {
+      // Show all errors joined with commas
+      setError(passwordErrors.join(', '));
+      return;
+    }
+    
     setLoading(true);
     try {
       await axios.post('http://localhost:5000/api/users/reset-password', {
@@ -436,7 +476,7 @@ const PasswordReset = () => {
                   <Button type="button" variant="outlined" startIcon={<ArrowBackIcon />} onClick={() => setStep(2)} fullWidth>
                     Back
                   </Button>
-                  <Button type="submit" variant="contained" fullWidth disabled={!isPasswordMatch || loading} endIcon={loading ? null : <ArrowForwardIcon />} sx={{ py: 1.25 }}>
+                  <Button type="submit" variant="contained" fullWidth disabled={!isPasswordMatch || passwordScore(newPassword) < 3 || loading} endIcon={loading ? null : <ArrowForwardIcon />} sx={{ py: 1.25 }}>
                     {loading ? 'Saving…' : 'Reset Password'}
                   </Button>
                 </Box>
