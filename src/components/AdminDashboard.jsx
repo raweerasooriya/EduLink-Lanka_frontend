@@ -653,6 +653,29 @@ const TimetableSection = () => {
       
       return availableTeachers;
     }
+
+      if (field === "room") {
+      // Auto-assign room based on class, but allow manual override
+      const autoRoom = roomAssignment[currentForm?.class] || "";
+      
+      // Filter out rooms that are occupied at this time slot
+      const availableRooms = rooms.filter(room => {
+        const isOccupied = rows.some(row => 
+          row.room === room && 
+          row.day === day && 
+          row.period === period &&
+          row._id !== currentForm?._id
+        );
+        return !isOccupied;
+      });
+
+      // Put auto-assigned room first if available
+      if (autoRoom && availableRooms.includes(autoRoom)) {
+        return [autoRoom, ...availableRooms.filter(r => r !== autoRoom)];
+      }
+      
+      return availableRooms;
+    }
     
     if (field === "room") {
       // Auto-assign room based on class, but allow manual override
@@ -807,6 +830,21 @@ const TimetableSection = () => {
       ...form,
       room: form.room || roomAssignment[form.class] || rooms[0]
     };
+
+      // NEW VALIDATION: Check if room is already occupied at same time slot
+    if (form.room && form.day && form.period) {
+      const roomConflict = rows.find(row => 
+        row.room === form.room && 
+        row.day === form.day && 
+        row.period === form.period &&
+        row._id !== form._id
+      );
+      
+      if (roomConflict) {
+        setWarning(`Error: Room ${form.room} is already occupied by ${roomConflict.class} (${roomConflict.subject}) with ${roomConflict.teacher} at this time slot! Please choose a different room or time slot.`);
+        return;
+      }
+    }
 
     try {
       if (finalForm._id) {

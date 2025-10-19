@@ -173,7 +173,7 @@ const Register = () => {
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       setGeneratedOtp(otp);
       const templateParams = { passcode: otp, email };
-      await emailjs.send("service_3pydmhp", "template_tx9due4", templateParams, "O30M_nUTG29GmeSAh");
+      await emailjs.send("service_4womfbl", "template_d5slx9b", templateParams, "U6gH6RkL_M1ycqlmQ");
       setSuccess(`We sent a 6‑digit code to ${email}.`);
       setStep(2);
     } catch (err) {
