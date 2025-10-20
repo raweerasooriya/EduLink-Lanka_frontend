@@ -1,5 +1,4 @@
 /**
- * IT23569454 - De Silva K.S.D
  * This component creates a reusable pop-up modal (a dialog box) to manage a user's profile.
  * It's designed to be flexible and can be used anywhere in the application.
  * For example, an admin can use it to edit a student's profile, or a user can use it to edit their own.
@@ -118,13 +117,50 @@ const ProfileManagementModal = ({ open, onClose, userId, onPasswordChangeSuccess
     }
   };
 
+  const validatePassword = (password) => {
+    const minLength = 8;
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasLowerCase = /[a-z]/.test(password);
+    const hasNumbers = /\d/.test(password);
+    
+    return {
+      isValid: password.length >= minLength && hasUpperCase && hasLowerCase && hasNumbers,
+      minLength,
+      hasUpperCase,
+      hasLowerCase,
+      hasNumbers
+    };
+  };
+
   const handleChangePassword = async () => {
     setPasswordChangeError('');
     setPasswordChangeSuccess('');
-    if (newPassword !== confirmNewPassword) {
-      setPasswordChangeError('New passwords do not match');
+    
+    // Validation 1: Check if current password is provided
+    if (!currentPassword) {
+      setPasswordChangeError('Current password is required to set a new password.');
       return;
     }
+    
+    // Validation 2: Check if new password is different from current password
+    if (currentPassword === newPassword) {
+      setPasswordChangeError('New password cannot be the same as current password.');
+      return;
+    }
+    
+    // Validation 3: Check if new passwords match
+    if (newPassword !== confirmNewPassword) {
+      setPasswordChangeError('New passwords do not match.');
+      return;
+    }
+    
+    // Validation 4: Check password strength requirements
+    const passwordValidation = validatePassword(newPassword);
+    if (!passwordValidation.isValid) {
+      setPasswordChangeError(`Password must contain at least ${passwordValidation.minLength} characters, including uppercase letters, lowercase letters, and numbers.`);
+      return;
+    }
+    
     try {
       const token = localStorage.getItem('token');
       await axios.post('http://localhost:5000/api/users/change-password', {
@@ -139,7 +175,9 @@ const ProfileManagementModal = ({ open, onClose, userId, onPasswordChangeSuccess
       setCurrentPassword('');
       setNewPassword('');
       setConfirmNewPassword('');
-      onPasswordChangeSuccess();
+      if (onPasswordChangeSuccess) {
+        onPasswordChangeSuccess();
+      }
     } catch (err) {
       console.error('Error changing password:', err);
       setPasswordChangeError(err.response?.data?.message || 'Failed to change password');
@@ -225,6 +263,7 @@ const ProfileManagementModal = ({ open, onClose, userId, onPasswordChangeSuccess
             value={currentPassword}
             onChange={(e) => setCurrentPassword(e.target.value)}
             fullWidth
+            helperText="Enter your current password to set a new one"
           />
           <TextField
             label="New Password"
@@ -232,6 +271,7 @@ const ProfileManagementModal = ({ open, onClose, userId, onPasswordChangeSuccess
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
             fullWidth
+            helperText="Must contain uppercase, lowercase letters, numbers, and be at least 8 characters long"
           />
           <TextField
             label="Confirm New Password"
@@ -239,6 +279,7 @@ const ProfileManagementModal = ({ open, onClose, userId, onPasswordChangeSuccess
             value={confirmNewPassword}
             onChange={(e) => setConfirmNewPassword(e.target.value)}
             fullWidth
+            helperText="Re-enter your new password"
           />
           <Button variant="contained" onClick={handleChangePassword}>Change Password</Button>
 
