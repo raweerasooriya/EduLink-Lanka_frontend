@@ -75,6 +75,13 @@ const ProfileManagementModal = ({ open, onClose, userId, onPasswordChangeSuccess
       return;
     }
 
+    // Add mobile validation
+    const mobileError = validateMobile(mobile);
+    if (mobileError) {
+      setProfileImageUpdateError(mobileError);
+      return;
+    }
+
     try {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -85,7 +92,7 @@ const ProfileManagementModal = ({ open, onClose, userId, onPasswordChangeSuccess
       const updateData = {
         name: name.trim(),
         username: username.trim(),
-        mobile: mobile.trim(),
+        mobile: mobile.trim() || null, // Handle empty mobile field
       };
 
       // Only include profileImage if a new one was selected
@@ -115,6 +122,27 @@ const ProfileManagementModal = ({ open, onClose, userId, onPasswordChangeSuccess
       const errorMessage = err.response?.data?.msg || err.response?.data?.message || 'Failed to update profile';
       setProfileImageUpdateError(errorMessage);
     }
+  };
+
+  const validateMobile = (mobileNumber) => {
+    const mobile = mobileNumber.trim();
+    
+    // Check if starts with 0
+    if (!mobile.startsWith('0')) {
+      return 'Mobile number must start with 0';
+    }
+    
+    // Check if exactly 10 digits
+    if (mobile.length !== 10) {
+      return 'Mobile number must be exactly 10 digits';
+    }
+    
+    // Check if contains only numbers
+    if (!/^\d+$/.test(mobile)) {
+      return 'Mobile number must contain only numbers';
+    }
+    
+    return null; // No error
   };
 
   const validatePassword = (password) => {
