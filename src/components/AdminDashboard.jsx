@@ -1991,6 +1991,18 @@ const ResultsSection = () => {
         return;
       }
 
+      // ✅ Score validation - Add this section
+      const score = parseFloat(form.score);
+      if (isNaN(score)) {
+        setSnack("Please enter a valid score");
+        return;
+      }
+      
+      if (score < 0 || score > 100) {
+        setSnack("Score must be between 0 and 100");
+        return;
+      }
+
       // ✅ Prevent duplicate marks for same student + subject + exam
       const duplicate = rows.some(
         r =>
@@ -2024,6 +2036,7 @@ const ResultsSection = () => {
       setSnack("Error saving result: " + errorMsg);
     }
   };
+
   const remove = async (id) => {
     try {
       const token = localStorage.getItem('token');
@@ -2147,6 +2160,12 @@ const ResultsSection = () => {
               }}
               inputProps={{ inputMode: "decimal", pattern: "[0-9]*", maxLength: 5 }}
               helperText="Enter score as percentage (0–100)"
+              error={form.score !== "" && (form.score < 0 || form.score > 100)}
+              FormHelperTextProps={{
+                sx: { 
+                  color: form.score !== "" && (form.score < 0 || form.score > 100) ? 'error.main' : 'text.secondary'
+                }
+              }}
             />
 
             <FormControl fullWidth disabled>
